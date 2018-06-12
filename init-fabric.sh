@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # adjust ---------------
-: ${FABRIC_VERSION:="1.1.0-rc1"}
+: ${FABRIC_VERSION:="1.1.0"}
 #-----------------------
 FABRIC_PACK="x86_64-${FABRIC_VERSION}"
 
@@ -40,11 +40,6 @@ sudo docker pull nginx
 echo "Pull node:6-alpine"
 sudo docker pull node:6-alpine
 export FABRIC_PACK
-
-echo
-echo "---------------------------------"
-echo "Relogin to apply the user into the 'docker' group"
-echo "---------------------------------"
 
 
 
