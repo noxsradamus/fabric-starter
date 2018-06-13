@@ -10,15 +10,17 @@ artifactsTemplatesFolder="artifact-templates"
 : ${TEMPLATES_DOCKER_COMPOSE_FOLDER:=$FABRIC_STARTER_HOME/$composeTemplatesFolder}
 : ${GENERATED_ARTIFACTS_FOLDER:=./artifacts}
 : ${GENERATED_DOCKER_COMPOSE_FOLDER:=./dockercompose}
+#: ${FABRIC_DOCKER_VERSION=docker-ce-18.03.0.ce}
 
 : ${DOMAIN:="example.com"}
-: ${IP_ORDERER:="54.234.201.67"}
+: ${IP_ORDERER:="127.0.0.1"}
 : ${ORG1:="a"}
 : ${ORG2:="b"}
 : ${ORG3:="c"}
-: ${IP1:="54.86.191.160"}
-: ${IP2:="54.243.0.168"}
-: ${IP3:="54.211.142.174"}
+: ${MAIN_ORG:=${ORG1}}
+: ${IP1:="127.0.0.1"}
+: ${IP2:="127.0.0.1"}
+: ${IP3:="127.0.0.1"}
 
 echo "Use Fabric-Starter home: $FABRIC_STARTER_HOME"
 echo "Use docker compose template folder: $TEMPLATES_DOCKER_COMPOSE_FOLDER"
@@ -37,6 +39,7 @@ CLI_TIMEOUT=10000
 COMPOSE_TEMPLATE=$TEMPLATES_DOCKER_COMPOSE_FOLDER/docker-composetemplate.yaml
 COMPOSE_FILE_DEV=$TEMPLATES_DOCKER_COMPOSE_FOLDER/docker-composedev.yaml
 
+CHAINCODE_VERSION="1.0"
 CHAINCODE_COMMON_NAME=reference
 CHAINCODE_BILATERAL_NAME=relationship
 CHAINCODE_COMMON_INIT='{"Args":["init","a","100","b","100"]}'
@@ -53,9 +56,10 @@ DEFAULT_PEER1_EVENT_PORT=7058
 
 DEFAULT_PEER_EXTRA_HOSTS="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER"
 DEFAULT_CLI_EXTRA_HOSTS="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - www.$DOMAIN:$IP_ORDERER[newline]      - www.$ORG1.$DOMAIN:$IP1[newline]      - www.$ORG2.$DOMAIN:$IP2[newline]      - www.$ORG3.$DOMAIN:$IP3"
-DEFAULT_API_EXTRA_HOSTS1="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - peer0.$ORG2.$DOMAIN:$IP2[newline]      - peer0.$ORG3.$DOMAIN:$IP3"
-DEFAULT_API_EXTRA_HOSTS2="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - peer0.$ORG1.$DOMAIN:$IP1[newline]      - peer0.$ORG3.$DOMAIN:$IP3"
-DEFAULT_API_EXTRA_HOSTS3="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - peer0.$ORG1.$DOMAIN:$IP1[newline]      - peer0.$ORG2.$DOMAIN:$IP2"
+DEFAULT_API_EXTRA_HOSTS="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - peer0.$ORG1.$DOMAIN:$IP1[newline]      - peer0.$ORG2.$DOMAIN:$IP2[newline]      - peer0.$ORG3.$DOMAIN:$IP3[newline]      - peer1.$ORG1.$DOMAIN:$IP1[newline]      - peer1.$ORG2.$DOMAIN:$IP2[newline]      - peer1.$ORG3.$DOMAIN:$IP3"
+DEFAULT_API_EXTRA_HOSTS1="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - peer0.$ORG2.$DOMAIN:$IP2[newline]      - peer0.$ORG3.$DOMAIN:$IP3[newline]      - peer1.$ORG2.$DOMAIN:$IP2[newline]      - peer1.$ORG3.$DOMAIN:$IP3"
+DEFAULT_API_EXTRA_HOSTS2="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - peer0.$ORG1.$DOMAIN:$IP1[newline]      - peer0.$ORG3.$DOMAIN:$IP3[newline]      - peer1.$ORG1.$DOMAIN:$IP1[newline]      - peer1.$ORG3.$DOMAIN:$IP3"
+DEFAULT_API_EXTRA_HOSTS3="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - peer0.$ORG1.$DOMAIN:$IP1[newline]      - peer0.$ORG2.$DOMAIN:$IP2[newline]      - peer1.$ORG1.$DOMAIN:$IP1[newline]      - peer1.$ORG2.$DOMAIN:$IP2"
 
 GID=$(id -g)
 
@@ -122,6 +126,15 @@ function removeDockersWithDomain() {
     echo "Removing docker instances found with $search: $docker_ids"
     docker rm -f ${docker_ids}
   fi
+
+  docker_ids=$(docker volume ls -q | grep ${search})
+  if [ -z "$docker_ids" -o "$docker_ids" == " " ]; then
+    echo "No docker volumes available for deletion with $search"
+  else
+    echo "Removing docker volumes found with $search: $docker_ids"
+    docker volume rm -f ${docker_ids}
+  fi
+
 }
 
 function removeDockersWithOrg() {
@@ -142,6 +155,7 @@ function generateOrdererDockerCompose() {
     compose_template=$TEMPLATES_DOCKER_COMPOSE_FOLDER/docker-composetemplate-orderer.yaml
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-$DOMAIN.yaml"
 
+    #addHostFiles ${org}
     cli_extra_hosts=${DEFAULT_CLI_EXTRA_HOSTS}
 
     sed -e "s/DOMAIN/$DOMAIN/g" -e "s/MAIN_ORG/$mainOrg/g" -e "s/CLI_EXTRA_HOSTS/$cli_extra_hosts/g" -e "s/ORDERER_PORT/$DEFAULT_ORDERER_PORT/g" -e "s/WWW_PORT/$DEFAULT_WWW_PORT/g" -e "s/ORG1/$ORG1/g" -e "s/ORG2/$ORG2/g" -e "s/ORG3/$ORG3/g" ${compose_template} | awk '{gsub(/\[newline\]/, "\n")}1' > ${f}
@@ -247,6 +261,14 @@ function generateOrdererArtifacts() {
     docker-compose --file ${f} run --rm "cli.$DOMAIN" bash -c "chown -R $UID:$GID ."
 }
 
+function addHostFiles() {
+    org=$1
+
+    mkdir -p $GENERATED_ARTIFACTS_FOLDER/hosts/${org}
+    cp $TEMPLATES_ARTIFACTS_FOLDER/default_hosts $GENERATED_ARTIFACTS_FOLDER/hosts/${org}/api_hosts
+    cp $TEMPLATES_ARTIFACTS_FOLDER/default_hosts $GENERATED_ARTIFACTS_FOLDER/hosts/${org}/cli_hosts
+}
+
 function generatePeerArtifacts() {
     org=$1
 
@@ -295,9 +317,7 @@ function generatePeerArtifacts() {
     # fabric-ca-server-config yaml
     sed -e "s/ORG/$org/g" $TEMPLATES_ARTIFACTS_FOLDER/fabric-ca-server-configtemplate.yaml > $GENERATED_ARTIFACTS_FOLDER/"fabric-ca-server-config-$org.yaml"
 
-    mkdir -p $GENERATED_ARTIFACTS_FOLDER/hosts/${org} # TODO: move to outer level
-    cp $TEMPLATES_ARTIFACTS_FOLDER/default_hosts $GENERATED_ARTIFACTS_FOLDER/hosts/${org}/api_hosts
-    cp $TEMPLATES_ARTIFACTS_FOLDER/default_hosts $GENERATED_ARTIFACTS_FOLDER/hosts/${org}/cli_hosts
+    addHostFiles "${org}"
 
     echo "Generating crypto material with cryptogen"
 
@@ -352,6 +372,9 @@ function servePeerArtifacts() {
     org=$1
 
     copyFilesToWWW "$GENERATED_ARTIFACTS_FOLDER/crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls" "ca.crt" "generated TLS cert" $org
+
+    copyFilesToWWW "$GENERATED_ARTIFACTS_FOLDER/crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer1.$org.$DOMAIN/tls" "ca.crt" "generated TLS cert" $org
+
     copyFilesToWWW "$GENERATED_ARTIFACTS_FOLDER/crypto-config/peerOrganizations/$org.$DOMAIN" "msp" "generated TLS cert" $org
     copyFilesToWWW "$GENERATED_ARTIFACTS_FOLDER" "${org}Config.json" "generated ${org}Config.json" $org
 
@@ -433,7 +456,7 @@ function instantiateChaincode () {
     for channel_name in ${channel_names[@]}; do
         info "instantiating chaincode $n on $channel_name by $org using $f with $i"
 
-        c="CORE_PEER_ADDRESS=peer0.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v 1.0 -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+        c="CORE_PEER_ADDRESS=peer0.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
         d="cli.$org.$DOMAIN"
 
         echo "instantiating with $d by $c"
@@ -454,8 +477,8 @@ function warmUpChaincode () {
     for channel_name in ${channel_names[@]}; do
         info "warming up chaincode $n on $channel_name on all peers of $org with query using $f"
 
-        c="CORE_PEER_ADDRESS=peer0.$org.$DOMAIN:7051 peer chaincode query -n $n -v 1.0 -c '$initArgs' -C $channel_name \
-        && CORE_PEER_ADDRESS=peer1.$org.$DOMAIN:7051 peer chaincode query -n $n -v 1.0 -c '$initArgs' -C $channel_name"
+        c="CORE_PEER_ADDRESS=peer0.$org.$DOMAIN:7051 peer chaincode query -n $n -v ${CHAINCODE_VERSION} -c '$initArgs' -C $channel_name \
+        && CORE_PEER_ADDRESS=peer1.$org.$DOMAIN:7051 peer chaincode query -n $n -v ${CHAINCODE_VERSION} -c '$initArgs' -C $channel_name"
         d="cli.$org.$DOMAIN"
 
         echo "warming up with $d by $c"
@@ -540,7 +563,7 @@ function installAll() {
 
   for chaincode_name in ${CHAINCODE_COMMON_NAME} ${CHAINCODE_BILATERAL_NAME}
   do
-    installChaincode ${org} ${chaincode_name} "1.0"
+    installChaincode "${org}" "${chaincode_name}" "${CHAINCODE_VERSION}"
   done
 }
 
@@ -568,7 +591,7 @@ function createJoinInstantiateWarmUp() {
 }
 
 function makeCertDirs() {
-  mkdir -p "$GENERATED_ARTIFACTS_FOLDER/crypto-config/ordererOrganizations/$DOMAIN/orderers/orderer.$DOMAIN/tls"
+  #mkdir -p "$GENERATED_ARTIFACTS_FOLDER/crypto-config/ordererOrganizations/$DOMAIN/orderers/orderer.$DOMAIN/tls"
 
 #  for org in ${ORG1} ${ORG2} ${ORG3}
    for certDirsOrg in "$@"
@@ -654,8 +677,9 @@ function downloadArtifactsMember() {
   remoteOrg=$3
   f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-$org.yaml"
 
-  downloadChannelTxFiles ${@}
-  downloadNetworkConfig ${org} ${mainOrg}
+  downloadChannelTxFiles "$@"
+
+  downloadNetworkConfig "$@"
 
   info "downloading orderer cert file using $f"
 
@@ -665,10 +689,11 @@ function downloadArtifactsMember() {
 
   #TODO download not from all members but from the orderer
   info "downloading member cert files using $f"
-
-  c="for ORG in ${ORG1} ${ORG2} ${ORG3}; do wget ${WGET_OPTS} --directory-prefix crypto-config/peerOrganizations/\${ORG}.$DOMAIN/peers/peer0.\${ORG}.$DOMAIN/tls http://www.\${ORG}.$DOMAIN:$DEFAULT_WWW_PORT/crypto-config/peerOrganizations/\${ORG}.$DOMAIN/peers/peer0.\${ORG}.$DOMAIN/tls/ca.crt; done"
-  echo ${c}
-  docker-compose --file ${f} run --rm "cli.$org.$DOMAIN" bash -c "${c} && chown -R $UID:$GID ."
+  for one_peer in 'peer0' 'peer1'; do
+      c="for ORG in ${ORG1} ${ORG2} ${ORG3}; do wget ${WGET_OPTS} --directory-prefix crypto-config/peerOrganizations/\${ORG}.$DOMAIN/peers/$one_peer.\${ORG}.$DOMAIN/tls http://www.\${ORG}.$DOMAIN:$DEFAULT_WWW_PORT/crypto-config/peerOrganizations/\${ORG}.$DOMAIN/peers/$one_peer.\${ORG}.$DOMAIN/tls/ca.crt; done"
+      echo ${c}
+      docker-compose --file ${f} run --rm "cli.$org.$DOMAIN" bash -c "${c} && chown -R $UID:$GID ."
+  done
 
   if [ -n "$remoteOrg" ]; then
     makeCertDirs $remoteOrg
@@ -686,18 +711,18 @@ function downloadArtifactsOrderer() {
 #    done
 
   mainOrg=$1
-  if [ -z "$mainOrg" ]; then
+  #if [ -z "$mainOrg" ]; then
       makeCertDirs ${ORG1} ${ORG2} ${ORG3}
       downloadMemberMSP ${ORG1} ${ORG2} ${ORG3}
 
       info "downloading member cert files using $f"
-
-      c="for ORG in ${ORG1} ${ORG2} ${ORG3}; do wget ${WGET_OPTS} --directory-prefix crypto-config/peerOrganizations/\${ORG}.$DOMAIN/peers/peer0.\${ORG}.$DOMAIN/tls http://www.\${ORG}.$DOMAIN:$DEFAULT_WWW_PORT/crypto-config/peerOrganizations/\${ORG}.$DOMAIN/peers/peer0.\${ORG}.$DOMAIN/tls/ca.crt; done"
-      echo ${c}
-    #  executeBashCmdInCli "docker-compose-$DOMAIN.yaml" "cli.$DOMAIN" "${c} && chown -R $UID:$GID ."
-      f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-$DOMAIN.yaml"
-      docker-compose --file ${f} run --rm "cli.$DOMAIN" bash -c "${c} && chown -R $UID:$GID ."
-  fi
+      for one_peer in 'peer0' 'peer1'; do
+          c="for ORG in ${ORG1} ${ORG2} ${ORG3}; do wget ${WGET_OPTS} --directory-prefix crypto-config/peerOrganizations/\${ORG}.$DOMAIN/peers/$one_peer.\${ORG}.$DOMAIN/tls http://www.\${ORG}.$DOMAIN:$DEFAULT_WWW_PORT/crypto-config/peerOrganizations/\${ORG}.$DOMAIN/peers/$one_peer.\${ORG}.$DOMAIN/tls/ca.crt; done"
+          echo ${c}
+          f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-$DOMAIN.yaml"
+          docker-compose --file ${f} run --rm "cli.$DOMAIN" bash -c "${c} && chown -R $UID:$GID ."
+      done
+  #fi
 }
 
 #############################
@@ -1105,6 +1130,20 @@ function printArgs() {
   echo "$DOMAIN, $ORG1, $ORG2, $ORG3, $IP1, $IP2, $IP3"
 }
 
+function checkDocker() {
+
+if [ -n "$(which docker-compose)" ]; then
+  echo "Found docker-compose, skipping install.."
+else
+  if [ -n "$(which yum)" ]; then
+    sh $FABRIC_STARTER_HOME/init-docker-centos.sh
+  else
+    sh $FABRIC_STARTER_HOME/init-docker.sh
+  fi
+  return
+fi
+}
+
 # Print the usage message
 function printHelp () {
   echo "Usage: "
@@ -1170,6 +1209,8 @@ while getopts "h?m:o:a:w:c:0:1:2:3:k:v:i:n:M:I:R:P:" opt; do
   esac
 done
 
+checkDocker
+
 if [ "${MODE}" == "up" -a "${ORG}" == "" ]; then
   for org in ${DOMAIN} ${ORG1} ${ORG2} ${ORG3}
   do
@@ -1214,17 +1255,21 @@ elif [ "${MODE}" == "generate" ]; then
   generateOrdererArtifacts
   #generateWait
 elif [ "${MODE}" == "generate-orderer" ]; then  # params: -M ORG (optional)
+  clean
+  removeArtifacts
   generateOrdererDockerCompose ${MAIN_ORG}
   downloadArtifactsOrderer ${MAIN_ORG}
-  generateOrdererArtifacts ${MAIN_ORG}
+  generateOrdererArtifacts
 elif [ "${MODE}" == "generate-peer" ]; then # params: -o ORG -R true(optional- REMOTE_ORG)
+  clean
+  removeArtifacts
   generatePeerArtifacts ${ORG} ${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT}
   servePeerArtifacts ${ORG}
-  if [ -n "$REMOTE_ORG" ]; then
+  #if [ -n "$REMOTE_ORG" ]; then
     addOrgToCliHosts ${ORG} "orderer" ${IP_ORDERER}
     addOrgToCliHosts ${ORG} "www" ${IP_ORDERER}
     echo "$IP_ORDERER orderer.$DOMAIN" >> $GENERATED_ARTIFACTS_FOLDER/hosts/${thisOrg}/api_hosts
-  fi
+  #fi
 elif [ "${MODE}" == "up-orderer" ]; then
   dockerComposeUp ${DOMAIN}
   serveOrdererArtifacts
@@ -1311,7 +1356,7 @@ elif [ "${MODE}" == "warmup-chaincode" ]; then # example: instantiate-chaincode 
   sleep 3
   warmUpChaincode ${ORG} "${CHANNELS}" ${CHAINCODE} ${CHAINCODE_INIT_ARG}
 elif [ "${MODE}" == "up-1" ]; then
-  downloadArtifactsMember ${ORG1} "" "" common "${ORG1}-${ORG2}" "${ORG1}-${ORG3}"
+  downloadArtifactsMember "${ORG1}" "" "" "common" "${ORG1}-${ORG2}" "${ORG1}-${ORG3}"
   dockerComposeUp ${ORG1}
   installAll ${ORG1}
 
@@ -1322,7 +1367,7 @@ elif [ "${MODE}" == "up-1" ]; then
   createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
 
 elif [ "${MODE}" == "up-2" ]; then
-  downloadArtifactsMember ${ORG2} "" "" common "${ORG1}-${ORG2}" "${ORG2}-${ORG3}"
+  downloadArtifactsMember "${ORG2}" "" "" "common" "${ORG1}-${ORG2}" "${ORG2}-${ORG3}"
   dockerComposeUp ${ORG2}
   installAll ${ORG2}
 
@@ -1335,7 +1380,7 @@ elif [ "${MODE}" == "up-2" ]; then
   createJoinInstantiateWarmUp ${ORG2} "${ORG2}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
 
 elif [ "${MODE}" == "up-3" ]; then
-  downloadArtifactsMember ${ORG3} "" "" common "${ORG1}-${ORG3}" "${ORG2}-${ORG3}"
+  downloadArtifactsMember "${ORG3}" "" "" "common" "${ORG1}-${ORG3}" "${ORG2}-${ORG3}"
   dockerComposeUp ${ORG3}
   installAll ${ORG3}
 
@@ -1389,7 +1434,7 @@ elif [ "${MODE}" == "upgradeChaincode" ]; then #deprecated
     upgradeChaincode ${org} ${CHAINCODE_COMMON_NAME} ${CHAINCODE_VERSION}
   done
 elif [ "${MODE}" == "upgrade-chaincode" ]; then
-  [[ -z "${ORG}" ]] && echo "missing required argument -o ORG: organization name to install chaincode into" && exit 1
+  [[ -z "${ORG}" ]] && echo "missing required argument -o ORG:  name to install chaincode into" && exit 1
   [[ -z "${CHAINCODE}" ]] && echo "missing required argument -d CHAINCODE: chaincode name to install" && exit 1
   [[ -z "${CHAINCODE_VERSION}" ]] && echo "missing required argument -v CHAINCODE_VERSION: chaincode version" && exit 1
   [[ -z "${CHAINCODE_INIT_ARG}" ]] && echo "missing required argument -I CHAINCODE_INIT_ARG: chaincode initialization arguments" && exit 1
