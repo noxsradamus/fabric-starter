@@ -1263,7 +1263,7 @@ elif [ "${MODE}" == "generate-orderer" ]; then  # params: -M ORG (optional)
 elif [ "${MODE}" == "generate-peer" ]; then # params: -o ORG -R true(optional- REMOTE_ORG)
   clean
   removeArtifacts
-  generatePeerArtifacts ${ORG} ${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT}
+  generatePeerArtifacts ${ORG} #${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT}
   servePeerArtifacts ${ORG}
   #if [ -n "$REMOTE_ORG" ]; then
     addOrgToCliHosts ${ORG} "orderer" ${IP_ORDERER}
