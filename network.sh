@@ -53,6 +53,7 @@ DEFAULT_PEER0_PORT=7051
 DEFAULT_PEER0_EVENT_PORT=7053
 DEFAULT_PEER1_PORT=7056
 DEFAULT_PEER1_EVENT_PORT=7058
+DEFAULT_KAFKA_PORT=9092
 
 DEFAULT_PEER_EXTRA_HOSTS="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER"
 DEFAULT_CLI_EXTRA_HOSTS="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDERER[newline]      - www.$DOMAIN:$IP_ORDERER[newline]      - www.$ORG1.$DOMAIN:$IP1[newline]      - www.$ORG2.$DOMAIN:$IP2[newline]      - www.$ORG3.$DOMAIN:$IP3"

@@ -27,3 +27,14 @@ services:
     extends:
       file: base.yaml
       service: www-base
+
+  zookeeper:
+    extends:
+      file: base.yaml
+      service: zookeeper-base
+
+  kafka:
+    extends:
+      file: base.yaml
+      service: kafka-base
+
