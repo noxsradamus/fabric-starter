@@ -1,4 +1,4 @@
-# Starter Application for Hyperledger Fabric 1.1
+# Starter Application for Hyperledger Fabric 1.2
 
 Create a network to jump start development of your decentralized application.
 
