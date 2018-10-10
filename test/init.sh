@@ -3,8 +3,6 @@ echo "Clone hyperledger/caliper..."
 git clone https://github.com/hyperledger/caliper.git
 echo "Copy ./docker/. to ./caliper"
 cp -ra ./docker/. ./caliper
-echo "Copy ./ext/custom-query/. to ./caliper/."
-cp -ra ./ext/custom-query/. ./caliper/.
 
 # copy into benchmark
 # network-config.json -> fabric.json
