@@ -22,16 +22,17 @@ artifactsTemplatesFolder="artifact-templates"
 : ${IP2:="127.0.0.1"}
 : ${IP3:="127.0.0.1"}
 
+: ${FABRIC_VERSION:="1.1.0"}
+: ${THIRDPARTY_VERSION:="0.4.8"}
+: ${FABRIC_REST_VERSION:="0.11.1"}
+
 echo "Use Fabric-Starter home: $FABRIC_STARTER_HOME"
 echo "Use docker compose template folder: $TEMPLATES_DOCKER_COMPOSE_FOLDER"
 echo "Use target artifact folder: $GENERATED_ARTIFACTS_FOLDER"
 echo "Use target docker-compose folder: $GENERATED_DOCKER_COMPOSE_FOLDER"
-
-[[ -d $GENERATED_ARTIFACTS_FOLDER ]] || mkdir $GENERATED_ARTIFACTS_FOLDER
-[[ -d $GENERATED_DOCKER_COMPOSE_FOLDER ]] || mkdir $GENERATED_DOCKER_COMPOSE_FOLDER
-cp -f "$TEMPLATES_DOCKER_COMPOSE_FOLDER/base.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"
-cp -f "$TEMPLATES_DOCKER_COMPOSE_FOLDER/base-intercept.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"
-if [[ -d ./$composeTemplatesFolder ]]; then cp -f "./$composeTemplatesFolder/base-intercept.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"; fi
+echo "Use Fabric Version: $FABRIC_VERSION"
+echo "Use Fabric REST Version: $FABRIC_REST_VERSION"
+echo "Use 3rdParty Version: $THIRDPARTY_VERSION"
 
 
 WGET_OPTS="--verbose -N"
@@ -63,6 +64,11 @@ DEFAULT_API_EXTRA_HOSTS3="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDER
 
 GID=$(id -g)
 
+function setDockerVersions() {
+    echo "set Docker image versions for $1"
+    sed -i -e "s/FABRIC_VERSION/$FABRIC_VERSION/g" -e "s/THIRDPARTY_VERSION/$THIRDPARTY_VERSION/g" -e "s/FABRIC_REST_VERSION/$FABRIC_REST_VERSION/g" $1
+}
+
 function removeUnwantedContainers() {
   docker ps -a -q -f "name=dev-*"|xargs docker rm -f
 }
@@ -78,7 +84,16 @@ function removeUnwantedImages() {
   fi
 }
 
+function generateArtifacts() {
+  [[ -d $GENERATED_ARTIFACTS_FOLDER ]] || mkdir $GENERATED_ARTIFACTS_FOLDER
+  [[ -d $GENERATED_DOCKER_COMPOSE_FOLDER ]] || mkdir $GENERATED_DOCKER_COMPOSE_FOLDER
+  cp -f "$TEMPLATES_DOCKER_COMPOSE_FOLDER/base.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"
+  cp -f "$TEMPLATES_DOCKER_COMPOSE_FOLDER/base-intercept.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"
+  if [[ -d ./$composeTemplatesFolder ]]; then cp -f "./$composeTemplatesFolder/base-intercept.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"; fi
+}
+
 function removeArtifacts() {
+  generateArtifacts
   echo "Removing generated and downloaded artifacts from: $GENERATED_DOCKER_COMPOSE_FOLDER, $GENERATED_ARTIFACTS_FOLDER"
   rm $GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-*.yaml
   rm -rf $GENERATED_ARTIFACTS_FOLDER/crypto-config
@@ -159,6 +174,8 @@ function generateOrdererDockerCompose() {
     cli_extra_hosts=${DEFAULT_CLI_EXTRA_HOSTS}
 
     sed -e "s/DOMAIN/$DOMAIN/g" -e "s/MAIN_ORG/$mainOrg/g" -e "s/CLI_EXTRA_HOSTS/$cli_extra_hosts/g" -e "s/ORDERER_PORT/$DEFAULT_ORDERER_PORT/g" -e "s/WWW_PORT/$DEFAULT_WWW_PORT/g" -e "s/ORG1/$ORG1/g" -e "s/ORG2/$ORG2/g" -e "s/ORG3/$ORG3/g" ${compose_template} | awk '{gsub(/\[newline\]/, "\n")}1' > ${f}
+
+    setDockerVersions $f
 }
 
 function generateNetworkConfig() {
@@ -318,6 +335,7 @@ function generatePeerArtifacts() {
     sed -e "s/ORG/$org/g" $TEMPLATES_ARTIFACTS_FOLDER/fabric-ca-server-configtemplate.yaml > $GENERATED_ARTIFACTS_FOLDER/"fabric-ca-server-config-$org.yaml"
 
     addHostFiles "${org}"
+    setDockerVersions $f
 
     echo "Generating crypto material with cryptogen"
 
@@ -1247,6 +1265,8 @@ elif [ "${MODE}" == "clean" ]; then
 elif [ "${MODE}" == "generate" ]; then
   clean
   removeArtifacts
+  setDockerVersions "$GENERATED_DOCKER_COMPOSE_FOLDER/base.yaml"
+  setDockerVersions "$GENERATED_DOCKER_COMPOSE_FOLDER/base-intercept.yaml"
 
   generatePeerArtifacts ${ORG1} 4000 8081 7054 7051 7053 7056 7058
   generatePeerArtifacts ${ORG2} 4001 8082 8054 8051 8053 8056 8058

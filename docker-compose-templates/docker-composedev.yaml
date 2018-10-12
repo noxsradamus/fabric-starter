@@ -3,7 +3,7 @@ version: '2'
 services:
   orderer:
     container_name: orderer
-    image: hyperledger/fabric-orderer:x86_64-1.1.0-preview
+    image: hyperledger/fabric-orderer:FABRIC_VERSION
     environment:
       - ORDERER_GENERAL_LOGLEVEL=debug
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
@@ -23,7 +23,7 @@ services:
 
   peer:
     container_name: peer
-    image: hyperledger/fabric-peer:x86_64-1.1.0-preview
+    image: hyperledger/fabric-peer:FABRIC_VERSION
     environment:
       - CORE_PEER_ID=peer
       - CORE_PEER_ADDRESS=peer:7051
@@ -46,7 +46,7 @@ services:
 
   cli:
     container_name: cli
-    image: hyperledger/fabric-tools:x86_64-1.1.0-preview
+    image: hyperledger/fabric-tools:FABRIC_VERSION
     tty: true
     environment:
       - GOPATH=/opt/gopath
@@ -71,25 +71,3 @@ services:
     depends_on:
       - orderer
       - peer
-
-#  chaincode:
-#    container_name: chaincode
-#    image: hyperledger/fabric-ccenv
-#    tty: true
-#    environment:
-#      - GOPATH=/opt/gopath
-#      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
-#      - CORE_LOGGING_LEVEL=DEBUG
-#      - CORE_PEER_ID=example02
-#      - CORE_PEER_ADDRESS=peer:7051
-#      - CORE_PEER_LOCALMSPID=DEFAULT
-#      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp
-#    working_dir: /opt/gopath/src
-#    command: /bin/bash -c 'sleep 6000000'
-#    volumes:
-#      - /var/run/:/host/var/run/
-#      - ./dev-msp:/etc/hyperledger/msp
-#      - ../chaincode/go:/opt/gopath/src
-#    depends_on:
-#      - orderer
-#      - peer
