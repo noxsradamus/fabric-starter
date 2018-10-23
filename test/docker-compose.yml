@@ -2,14 +2,16 @@ version: '3'
 services:
   caliper-base:
     build: ./caliper
+    #image: test_caliper-base
     working_dir: /usr/src/app
     command: sh ./scripts/start.sh
     environment:
-      - FABRIC_VERSION=1.1.0
+      - FABRIC_VERSION=1.3.0
+      - BENCHMARK_FOLDER=${BENCHMARK_FOLDER} #folder under /benchmark/ with tests scripts
     volumes:
       - ./benchmark:/usr/src/app/benchmark
       - ./network/fabric:/usr/src/app/network/fabric
-      - ./src/contract/fabric:/usr/src/app/src/contract/fabric
+      #- ./src/contract/fabric:/usr/src/app/src/contract/fabric
       - ./scripts:/usr/src/app/scripts
       - ./reports:/usr/src/app/reports
 networks:
