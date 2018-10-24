@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"fmt"
-	"errors"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
 var ledgerDataLogger = shim.NewLogger("LedgerData")
