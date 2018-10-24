@@ -1,22 +1,8 @@
 [
 
 	{
-		"name": "a-b-Deals",
-		"policy": "OR('aMSP.member', 'bMSP.member')",
-		"requiredPeerCount": 2,
-		"maxPeerCount": 3,
-		"blockToLive": 0
-	},
-	{
-		"name": "a-c-Deals",
-		"policy": "OR('aMSP.member','cMSP.member')",
-		"requiredPeerCount": 2,
-		"maxPeerCount": 3,
-		"blockToLive": 0
-	},
-	{
-		"name": "b-c-Deals",
-		"policy": "OR('bMSP.member', 'cMSP.member')",
+		"name": "collection",
+		"policy": "OR('aMSP.member', 'bMSP.member', 'cMSP.member')",
 		"requiredPeerCount": 2,
 		"maxPeerCount": 3,
 		"blockToLive": 0
