@@ -24,9 +24,9 @@ artifactsTemplatesFolder="artifact-templates"
 : ${IP2:="127.0.0.1"}
 : ${IP3:="127.0.0.1"}
 
-: ${FABRIC_VERSION:="1.1.0"}
-: ${THIRDPARTY_VERSION:="0.4.8"}
-: ${FABRIC_REST_VERSION:="0.11.1"}
+: ${FABRIC_VERSION:="1.3.0"}
+: ${THIRDPARTY_VERSION:="0.4.14"}
+: ${FABRIC_REST_VERSION:="0.13.0"}
 
 echo "Use Fabric-Starter home: $FABRIC_STARTER_HOME"
 echo "Use docker compose template folder: $TEMPLATES_DOCKER_COMPOSE_FOLDER"
