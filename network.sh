@@ -17,14 +17,16 @@ artifactsTemplatesFolder="artifact-templates"
 : ${ORG1:="a"}
 : ${ORG2:="b"}
 : ${ORG3:="c"}
+: ${PEER0:="peer0"}
+: ${PEER1:="peer1"}
 : ${MAIN_ORG:=${ORG1}}
 : ${IP1:="127.0.0.1"}
 : ${IP2:="127.0.0.1"}
 : ${IP3:="127.0.0.1"}
 
-: ${FABRIC_VERSION:="1.1.0"}
-: ${THIRDPARTY_VERSION:="0.4.8"}
-: ${FABRIC_REST_VERSION:="0.11.1"}
+: ${FABRIC_VERSION:="1.3.0"}
+: ${THIRDPARTY_VERSION:="0.4.14"}
+: ${FABRIC_REST_VERSION:="0.13.0"}
 
 echo "Use Fabric-Starter home: $FABRIC_STARTER_HOME"
 echo "Use docker compose template folder: $TEMPLATES_DOCKER_COMPOSE_FOLDER"
@@ -471,14 +473,16 @@ function instantiateChaincode () {
     i=$4
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-${org}.yaml"
 
-    for channel_name in ${channel_names[@]}; do
-        info "instantiating chaincode $n on $channel_name by $org using $f with $i"
+    for peer in ${PEER0} ${PEER1}; do
+        for channel_name in ${channel_names[@]}; do
+            info "instantiating chaincode $n on $channel_name by $org using $f with $i"
 
-        c="CORE_PEER_ADDRESS=peer0.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
-        d="cli.$org.$DOMAIN"
+            c="CORE_PEER_ADDRESS=$peer.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+            d="cli.$org.$DOMAIN"
 
-        echo "instantiating with $d by $c"
-        docker-compose --file ${f} run --rm ${d} bash -c "${c}"
+            echo "instantiating with $d by $c"
+            docker-compose --file ${f} run --rm ${d} bash -c "${c}"
+        done
     done
 }
 
@@ -1238,9 +1242,10 @@ if [ "${MODE}" == "up" -a "${ORG}" == "" ]; then
   for org in ${ORG1} ${ORG2} ${ORG3}
   do
     installAll ${org}
+    createJoinInstantiateWarmUp ${org} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT}
   done
 
-  createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT}
+#  createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT}
   createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
   createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
 
