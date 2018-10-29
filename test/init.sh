@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 echo "Clone hyperledger/caliper..."
 git clone https://gitlab.altoros.com/intprojects/Internal-Blockchain-Projects/caliper.git
+
+cd caliper
+git fetch
 echo "Switching to the benchmark branch"
-cd caliper && git fetch && git checkout -b benchmark origin/benchmark && cd ..
+git checkout -b benchmark origin/benchmark
+echo "Pulling changes"
+git pull
+cd ..
+
 echo "Copy ./docker/. to ./caliper"
 cp -ra ./docker/. ./caliper
 
