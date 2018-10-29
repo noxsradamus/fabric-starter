@@ -9,6 +9,8 @@ import (
 	"encoding/pem"
 	"crypto/x509"
 	"strings"
+	"fmt"
+	"errors"
 )
 
 var logger = shim.NewLogger("SimpleChaincode")
@@ -17,40 +19,17 @@ var logger = shim.NewLogger("SimpleChaincode")
 type SimpleChaincode struct {
 }
 
+const CollectionName = "collections"
+
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	logger.Debug("Init")
 
 	_, args := stub.GetFunctionAndParameters()
-	var a, b string    // Entities
-	var aVal, bVal int // Asset holdings
-	var err error
 
-	if len(args) != 4 {
-		return pb.Response{Status:403, Message:"Incorrect number of arguments. Expecting 4"}
-	}
-
-	// Initialize the chaincode
-	a = args[0]
-	aVal, err = strconv.Atoi(args[1])
-	if err != nil {
-		return pb.Response{Status:403, Message:"Expecting integer value for asset holding"}
-	}
-	b = args[2]
-	bVal, err = strconv.Atoi(args[3])
-	if err != nil {
-		return pb.Response{Status:403, Message:"Expecting integer value for asset holding"}
-	}
-	logger.Debugf("aVal, bVal = %d", aVal, bVal)
-
-	// Write the state to the ledger
-	err = stub.PutState(a, []byte(strconv.Itoa(aVal)))
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	err = stub.PutState(b, []byte(strconv.Itoa(bVal)))
-	if err != nil {
-		return shim.Error(err.Error())
+	if err := InitEntities(stub, args); err != nil {
+		message := fmt.Sprintf("cannot init entities: %s", err.Error())
+		logger.Error(message)
+		return shim.Error(message)
 	}
 
 	return shim.Success(nil)
@@ -72,14 +51,22 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	if function == "move" {
 		// Make payment of x units from a to b
 		return t.move(stub, args)
+	} else if function == "moveByCollections" {
+		// Deletes an entity from its state
+		return t.moveByCollections(stub, args)
 	} else if function == "delete" {
 		// Deletes an entity from its state
 		return t.delete(stub, args)
 	} else if function == "query" {
 		// the old "Query" is now implemented in invoke
 		return t.query(stub, args)
+	} else if function == "queryByCollections" {
+		// Deletes an entity from its state
+		return t.queryByCollections(stub, args)
+	} else if function == "initCollections" {
+		// Deletes an entity from its state
+		return t.initCollections(stub, args)
 	}
-
 	return pb.Response{Status:403, Message:"Invalid invoke function name."}
 }
 
@@ -139,6 +126,62 @@ func (t *SimpleChaincode) move(stub shim.ChaincodeStubInterface, args []string) 
 	return shim.Success(nil)
 }
 
+// Transaction makes payment of x units from a to b
+func (t *SimpleChaincode) moveByCollections(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var a, b string    // Entities
+	var aVal, bVal int // Asset holdings
+	var x int          // Transaction value
+	var err error
+
+	if len(args) != 3 {
+		return shim.Error("Incorrect number of arguments. Expecting 3")
+	}
+
+	a = args[0]
+	b = args[1]
+
+	// Get the state from the ledger
+	aBytes, err := stub.GetPrivateData(CollectionName, a)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	if aBytes == nil {
+		return pb.Response{Status:404, Message:"Entity not found"}
+	}
+	aVal, _ = strconv.Atoi(string(aBytes))
+
+	bBytes, err := stub.GetPrivateData(CollectionName, b)
+	if err != nil {
+		return shim.Error("Failed to get state")
+	}
+	if bBytes == nil {
+		return pb.Response{Status:404, Message:"Entity not found"}
+	}
+	bVal, _ = strconv.Atoi(string(bBytes))
+
+	// Perform the execution
+	x, err = strconv.Atoi(args[2])
+	if err != nil {
+		return pb.Response{Status:403, Message:"Invalid transaction amount, expecting an integer value"}
+	}
+	aVal = aVal - x
+	bVal = bVal + x
+	logger.Debug("aVal = %d, bVal = %d\n", aVal, bVal)
+
+	// Write the state back to the ledger
+	err = stub.PutPrivateData(CollectionName, a, []byte(strconv.Itoa(aVal)))
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	err = stub.PutPrivateData(CollectionName, b, []byte(strconv.Itoa(bVal)))
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
+}
+
 // deletes an entity from state
 func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	if len(args) != 1 {
@@ -179,6 +222,129 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 
 	return shim.Success(valBytes)
 }
+
+// read value
+func (t *SimpleChaincode) queryByCollections(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var a string // Entities
+	var err error
+
+	//if len(args) != 1 {
+	//	return pb.Response{Status:403, Message:"Incorrect number of arguments"}
+	//}
+
+	a = args[0]
+
+	// Get the state from the ledger
+	valBytes, err := stub.GetPrivateData(CollectionName, a)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	if valBytes == nil {
+		return pb.Response{Status:404, Message:"Entity not found"}
+	}
+
+	return shim.Success(valBytes)
+}
+
+
+func InitEntities(stub shim.ChaincodeStubInterface, args []string) (error) {
+
+	logger.Debug("Start init Entities")
+	var a, b string    // Entities
+	var aVal, bVal int // Asset holdings
+	var err error
+
+	if len(args) != 4 {
+		message := fmt.Sprintf("Incorrect number of arguments. Expecting 4")
+		logger.Error(message)
+		return errors.New(message)
+	}
+
+	// Initialize the chaincode
+	a = args[0]
+	aVal, err = strconv.Atoi(args[1])
+	if err != nil {
+		message := fmt.Sprintf("Expecting integer value for asset holding")
+		logger.Error(message)
+		return errors.New(message)
+	}
+	b = args[2]
+	bVal, err = strconv.Atoi(args[3])
+	if err != nil {
+		message := fmt.Sprintf("Expecting integer value for asset holding")
+		logger.Error(message)
+		return errors.New(message)
+	}
+	logger.Debugf("aVal, bVal = %d", aVal, bVal)
+
+	// Write the state to the ledger
+	err = stub.PutState(a, []byte(strconv.Itoa(aVal)))
+	if err != nil {
+		message := fmt.Sprintf("Error PutState")
+		logger.Error(message)
+		return errors.New(message)
+	}
+
+	err = stub.PutState(b, []byte(strconv.Itoa(bVal)))
+	if err != nil {
+		message := fmt.Sprintf("Error PutState")
+		logger.Error(message)
+		return errors.New(message)
+	}
+
+	logger.Debug("End init Entities")
+	return nil
+}
+
+
+func (t *SimpleChaincode) initCollections(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+	logger.Debug("Start init Collections")
+	var a, b string    // Entities
+	var aVal, bVal int // Asset holdings
+	var err error
+
+	if len(args) != 4 {
+		message := fmt.Sprintf("Incorrect number of arguments. Expecting 4")
+		logger.Error(message)
+		return shim.Error(message)
+	}
+
+	// Initialize the chaincode
+	a = args[0]
+	aVal, err = strconv.Atoi(args[1])
+	if err != nil {
+		message := fmt.Sprintf("Expecting integer value for asset holding")
+		logger.Error(message)
+		return shim.Error(message)
+	}
+	b = args[2]
+	bVal, err = strconv.Atoi(args[3])
+	if err != nil {
+		message := fmt.Sprintf("Expecting integer value for asset holding")
+		logger.Error(message)
+		return shim.Error(message)
+	}
+	logger.Debugf("aVal, bVal = %d", aVal, bVal)
+
+	if err = stub.PutPrivateData(CollectionName, a, []byte(strconv.Itoa(aVal))); err != nil {
+		message := fmt.Sprintf("Error PutPrivateData: %s", err)
+		logger.Error(message)
+		return shim.Error(message)
+	}
+
+	if err = stub.PutPrivateData(CollectionName, b, []byte(strconv.Itoa(bVal))); err != nil {
+		message := fmt.Sprintf("Error PutPrivateData: %s", err)
+		logger.Error(message)
+		return shim.Error(message)
+	}
+
+	logger.Debug("End init Collections")
+	return shim.Success(nil)
+}
+
+
 
 var getCreator = func (certificate []byte) (string, string) {
 	data := certificate[strings.Index(string(certificate), "-----"): strings.LastIndex(string(certificate), "-----")+5]
