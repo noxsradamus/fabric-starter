@@ -1,11 +1,11 @@
 [
 
 	{
-		"name": "collections",
+		"name": "collection",
 		"policy": "OR('aMSP.member', 'bMSP.member', 'cMSP.member')",
-		"requiredPeerCount": 0,
+		"requiredPeerCount": 2,
 		"maxPeerCount": 3,
-		"blockToLive":0
+		"blockToLive": 0
 	}
 
 ]
