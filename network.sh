@@ -23,8 +23,8 @@ artifactsTemplatesFolder="artifact-templates"
 : ${IP3:="127.0.0.1"}
 
 : ${FABRIC_VERSION:="1.3.0"}
-: ${THIRDPARTY_VERSION:="0.4.10"}
-: ${FABRIC_REST_VERSION:="0.12.2"}
+: ${THIRDPARTY_VERSION:="0.4.14"}
+: ${FABRIC_REST_VERSION:="0.13.0"}
 
 
 echo "Use Fabric-Starter home: $FABRIC_STARTER_HOME"
