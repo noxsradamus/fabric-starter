@@ -12,6 +12,10 @@ var logger = shim.NewLogger("BenchmarkChaincode")
 type BenchmarkChaincode struct {
 }
 
+const (
+	collectionName = "collection"
+)
+
 func (cc *BenchmarkChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	logger.Debug("Init")
 
@@ -23,9 +27,9 @@ func (cc *BenchmarkChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Respon
 
 	function, args := stub.GetFunctionAndParameters()
 	if function == "put" {
-		return cc.put(stub, args)
+		return cc.put(stub, args, "")
 	} else if function == "edit" {
-		return cc.edit(stub, args)
+		return cc.edit(stub, args, "")
 	} else if function == "query" {
 		return cc.query(stub, args)
 	} else if function == "queryAll" {
@@ -37,9 +41,9 @@ func (cc *BenchmarkChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Respon
 	} else if function == "filterCouch" {
 		return cc.filterCouch(stub, args)
 	} else if function == "putPrivate" {
-		return cc.putPrivate(stub, args)
+		return cc.put(stub, args, collectionName)
 	} else if function == "editPrivate" {
-		return cc.editPrivate(stub, args)
+		return cc.edit(stub, args, collectionName)
 	} else if function == "queryPrivate" {
 		return cc.queryPrivate(stub, args)
 	} else if function == "queryAllPrivate" {

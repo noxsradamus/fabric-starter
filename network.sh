@@ -1218,6 +1218,10 @@ function printHelp () {
   echo "      - 'generate' - generate required certificates and genesis block"
   echo "      - 'logs' - print and follow all docker instances log files"
   echo
+  echo "    -s <state> - one of 'couchdb' or 'leveldb'"
+  echo "      - 'couchdb' - set CouchDB as State Database"
+  echo "      - 'leveldb' - set LevelDB as State Database"
+
   echo "Typically, one would first generate the required certificates and "
   echo "genesis block, then bring up the network. e.g.:"
   echo

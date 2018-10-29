@@ -21,26 +21,42 @@ type LedgerData interface {
 	ToLedgerValue() ([]byte, error)
 }
 
-func ExistsIn(stub shim.ChaincodeStubInterface, data LedgerData) bool {
+func ExistsIn(stub shim.ChaincodeStubInterface, data LedgerData, collection string) bool {
 	compositeKey, err := data.ToCompositeKey(stub)
 	if err != nil {
 		return false
 	}
 
-	if data, err := stub.GetState(compositeKey); err != nil || data == nil {
-		return false
+	if collection != ""{
+		logger.Debug("GetPrivateData")
+		if data, err := stub.GetPrivateData(collection, compositeKey); err != nil || data == nil {
+			return false
+		}
+	} else {
+		logger.Debug("GetState")
+		if data, err := stub.GetState(compositeKey); err != nil || data == nil {
+			return false
+		}
 	}
 
 	return true
 }
 
-func LoadFrom(stub shim.ChaincodeStubInterface, data LedgerData) error {
+func LoadFrom(stub shim.ChaincodeStubInterface, data LedgerData, collection string) error {
+	var bytes []byte
 	compositeKey, err := data.ToCompositeKey(stub)
 	if err != nil {
 		return err
 	}
 
-	bytes, err := stub.GetState(compositeKey)
+	if collection != ""{
+		logger.Debug("GetPrivateData")
+		bytes, err = stub.GetPrivateData(collection, compositeKey)
+	} else {
+		logger.Debug("GetState")
+		bytes, err = stub.GetState(compositeKey)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -48,7 +64,7 @@ func LoadFrom(stub shim.ChaincodeStubInterface, data LedgerData) error {
 	return data.FillFromLedgerValue(bytes)
 }
 
-func UpdateOrInsertIn(stub shim.ChaincodeStubInterface, data LedgerData) error {
+func UpdateOrInsertIn(stub shim.ChaincodeStubInterface, data LedgerData, collection string) error {
 	compositeKey, err := data.ToCompositeKey(stub)
 	if err != nil {
 		return err
@@ -59,26 +75,16 @@ func UpdateOrInsertIn(stub shim.ChaincodeStubInterface, data LedgerData) error {
 		return err
 	}
 
-	if err = stub.PutState(compositeKey, value); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func UpdateOrInsertInCollection(stub shim.ChaincodeStubInterface, data LedgerData, collection string) error {
-	compositeKey, err := data.ToCompositeKey(stub)
-	if err != nil {
-		return err
-	}
-
-	value, err := data.ToLedgerValue()
-	if err != nil {
-		return err
-	}
-
-	if err = stub.PutPrivateData(collection, compositeKey, value); err != nil {
-		return err
+	if collection != ""{
+		logger.Debug("PutPrivateData")
+		if err = stub.PutPrivateData(collection, compositeKey, value); err != nil {
+			return err
+		}
+	} else {
+		logger.Debug("PutState")
+		if err = stub.PutState(compositeKey, value); err != nil {
+			return err
+		}
 	}
 
 	return nil
