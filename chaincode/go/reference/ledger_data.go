@@ -104,8 +104,8 @@ func Query(stub shim.ChaincodeStubInterface, index string, partialKey []string,
 	ledgerDataLogger.Info(fmt.Sprintf("Query(%s) is running", index))
 	ledgerDataLogger.Debug("Query " + index)
 
-	//Define empty Iterator
-	it, err := stub.GetStateByPartialCompositeKey("", nil)
+	var it shim.StateQueryIteratorInterface
+	var err error
 
 	if collection != ""{
 		logger.Debug("GetPrivateDataByPartialCompositeKey")

@@ -65,3 +65,4 @@ func (data *TestData) ToCompositeKey(stub shim.ChaincodeStubInterface) (string, 
 func (data *TestData) ToLedgerValue() ([]byte, error) {
 	return json.Marshal(data.Value)
 }
+
