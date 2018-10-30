@@ -99,12 +99,22 @@ func EmptyFilter(data LedgerData) bool {
 }
 
 func Query(stub shim.ChaincodeStubInterface, index string, partialKey []string,
-	createEntry FactoryMethod, filterEntry FilterFunction) ([]byte, error) {
+	createEntry FactoryMethod, filterEntry FilterFunction, collection string) ([]byte, error) {
 
 	ledgerDataLogger.Info(fmt.Sprintf("Query(%s) is running", index))
 	ledgerDataLogger.Debug("Query " + index)
 
-	it, err := stub.GetStateByPartialCompositeKey(index, partialKey)
+	//Define empty Iterator
+	it, err := stub.GetStateByPartialCompositeKey("", nil)
+
+	if collection != ""{
+		logger.Debug("GetPrivateDataByPartialCompositeKey")
+		it, err = stub.GetPrivateDataByPartialCompositeKey(collection, index, partialKey)
+	} else {
+		logger.Debug("GetStateByPartialCompositeKey")
+		it, err = stub.GetStateByPartialCompositeKey(index, partialKey)
+	}
+
 	if err != nil {
 		message := fmt.Sprintf("unable to get state by partial composite key %s: %s", index, err.Error())
 		ledgerDataLogger.Error(message)
