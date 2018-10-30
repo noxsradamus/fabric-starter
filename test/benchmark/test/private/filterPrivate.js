@@ -1,22 +1,18 @@
 'use strict';
 
-module.exports.info  = 'querying objects';
+module.exports.info  = 'filter Private';
 
 
-let bc, contx;
-let data;
+let bc, contx, timeout;
 module.exports.init = function(blockchain, context, args) {
-    const add = require('./add.js');
     bc       = blockchain;
     contx    = context;
-    data = add.data;
+    timeout = args.timeout || 60;
     return Promise.resolve();
 };
 
 module.exports.run = function() {
-    const objId  = data[Math.floor(Math.random()*(data.length))];
-
-    return bc.queryState(contx, 'reference', 'v1', objId, 'readProduct');
+    return bc.queryState(contx, 'reference', 'v1', [], 'filterPrivate', timeout);
 };
 
 module.exports.end = function() {

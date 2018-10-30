@@ -101,9 +101,9 @@
     "context": {
       "put": "common",
       "edit": "common",
-      "query": "common",
       "queryAll": "common",
-      "filter": "common"
+      "queryCouch": "common",
+      "filterCouch": "common"
     }
   },
   "info" : {

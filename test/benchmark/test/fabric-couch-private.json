@@ -99,11 +99,11 @@
     ],
 
     "context": {
-      "put": "common",
-      "edit": "common",
-      "query": "common",
-      "queryAll": "common",
-      "filter": "common"
+      "putPrivate": "common",
+      "editPrivate": "common",
+      "queryAllPrivate": "common",
+      "queryCouchPrivate": "common",
+      "filterCouchPrivate": "common"
     }
   },
   "info" : {

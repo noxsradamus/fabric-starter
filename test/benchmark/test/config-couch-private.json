@@ -1,11 +1,11 @@
 {
   "blockchain": {
     "type": "fabric",
-    "config": "benchmark/test/fabric.json"
+    "config": "benchmark/test/fabric-couch-private.json"
   },
   "test": {
     "name": "test",
-    "description" : "Performance benchmark LevelDB",
+    "description" : "Performance benchmark Couch Private",
     "clients": {
       "type": "local",
       "number": 5
@@ -39,7 +39,7 @@
           }
         ],
         "arguments": {  },
-        "callback" : "benchmark/test/common/put.js"
+        "callback" : "benchmark/test/private/putPrivate.js"
       },{
       "label" : "edit",
       "txNumber" : [5],
@@ -50,32 +50,32 @@
         }
       ],
       "arguments": {  },
-      "callback" : "benchmark/test/common/edit.js"
+      "callback" : "benchmark/test/private/editPrivate.js"
     },
       {
-        "label" : "query",
+        "label" : "queryCouchPrivate",
         "txNumber" : [5],
         "rateControl" : [
           {"type": "fixed-rate", "opts": {"tps" : 1}}
         ],
-        "callback" : "benchmark/test/common/query.js"
+        "callback" : "benchmark/test/private/couchdb/queryCouchPrivate.js"
       },
       {
-        "label" : "queryAll",
+        "label" : "queryAllPrivate",
         "txNumber" : [50, 50],
         "rateControl" : [
           {"type": "fixed-rate", "opts": {"tps" : 5}},
           {"type": "fixed-rate", "opts": {"tps" : 10}}
         ],
-        "callback" : "benchmark/test/common/queryAll.js"
+        "callback" : "benchmark/test/private/couchdb/queryAllPrivate.js"
       },
       {
-        "label" : "filter",
+        "label" : "filterCouchPrivate",
         "txNumber" : [5],
         "rateControl" : [
           {"type": "fixed-rate", "opts": {"tps" : 1}}
         ],
-        "callback" : "benchmark/test/common/filter.js"
+        "callback" : "benchmark/test/private/couchdb/filterCouchPrivate.js"
       }]
   },
   "monitor": {

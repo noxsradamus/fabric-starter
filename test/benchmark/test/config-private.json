@@ -1,17 +1,17 @@
 {
   "blockchain": {
     "type": "fabric",
-    "config": "benchmark/test/fabric.json"
+    "config": "benchmark/test/fabric-private.json"
   },
   "test": {
     "name": "test",
-    "description" : "Performance benchmark LevelDB",
+    "description" : "Performance benchmark LevelDB Private",
     "clients": {
       "type": "local",
       "number": 5
     },
     "rounds": [{
-        "label" : "put",
+        "label" : "putPrivate",
         "txNumber" : [50, 50, 50],
         "rateControl" : [
           {
@@ -39,9 +39,9 @@
           }
         ],
         "arguments": {  },
-        "callback" : "benchmark/test/common/put.js"
+        "callback" : "benchmark/test/private/putPrivate.js"
       },{
-      "label" : "edit",
+      "label" : "editPrivate",
       "txNumber" : [5],
       "rateControl" : [
         {
@@ -50,32 +50,32 @@
         }
       ],
       "arguments": {  },
-      "callback" : "benchmark/test/common/edit.js"
+      "callback" : "benchmark/test/private/editPrivate.js"
     },
       {
-        "label" : "query",
+        "label" : "queryPrivate",
         "txNumber" : [5],
         "rateControl" : [
           {"type": "fixed-rate", "opts": {"tps" : 1}}
         ],
-        "callback" : "benchmark/test/common/query.js"
+        "callback" : "benchmark/test/private/queryPrivate.js"
       },
       {
-        "label" : "queryAll",
+        "label" : "queryAllPrivate",
         "txNumber" : [50, 50],
         "rateControl" : [
           {"type": "fixed-rate", "opts": {"tps" : 5}},
           {"type": "fixed-rate", "opts": {"tps" : 10}}
         ],
-        "callback" : "benchmark/test/common/queryAll.js"
+        "callback" : "benchmark/test/private/queryAllPrivate.js"
       },
       {
-        "label" : "filter",
+        "label" : "filterPrivate",
         "txNumber" : [5],
         "rateControl" : [
           {"type": "fixed-rate", "opts": {"tps" : 1}}
         ],
-        "callback" : "benchmark/test/common/filter.js"
+        "callback" : "benchmark/test/private/filterPrivate.js"
       }]
   },
   "monitor": {
