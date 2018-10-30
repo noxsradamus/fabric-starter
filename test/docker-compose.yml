@@ -8,11 +8,11 @@ services:
     environment:
       - FABRIC_VERSION=1.3.0 # 1.2.0 for 1.2
       - GRPC_VERSION=1.14.2 #1.10.1 for 1.2
-      - BENCHMARK_FOLDER=${BENCHMARK_FOLDER} #folder under /benchmark/ with tests scripts
+      - BENCHMARK_FOLDER=${BENCHMARK_FOLDER} #folder under /benchmark/ with tests scripts. default is 'test'
+      - CONFIG_FILE=${CONFIG_FILE} #config file. default is config.json
     volumes:
       - ./benchmark:/usr/src/app/benchmark
       - ./network/fabric:/usr/src/app/network/fabric
-      #- ./src/contract/fabric:/usr/src/app/src/contract/fabric
       - ./scripts:/usr/src/app/scripts
       - ./reports:/usr/src/app/reports
 networks:
