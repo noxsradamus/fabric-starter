@@ -31,29 +31,29 @@ func (cc *BenchmarkChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Respon
 	} else if function == "edit" {
 		return cc.edit(stub, args, "")
 	} else if function == "query" {
-		return cc.query(stub, args)
+		return cc.query(stub, args, "")
 	} else if function == "queryAll" {
-		return cc.queryAll(stub, args)
+		return cc.queryAll(stub, args, "")
 	} else if function == "queryCouch" {
-		return cc.queryCouch(stub, args)
+		return cc.queryCouch(stub, args, "")
 	} else if function == "filter" {
-		return cc.filter(stub, args)
+		return cc.filter(stub, args, "")
 	} else if function == "filterCouch" {
-		return cc.filterCouch(stub, args)
+		return cc.filterCouch(stub, args, "")
 	} else if function == "putPrivate" {
 		return cc.put(stub, args, collectionName)
 	} else if function == "editPrivate" {
 		return cc.edit(stub, args, collectionName)
 	} else if function == "queryPrivate" {
-		return cc.queryPrivate(stub, args)
+		return cc.query(stub, args, collectionName)
 	} else if function == "queryAllPrivate" {
-		return cc.queryAllPrivate(stub, args)
+		return cc.queryAll(stub, args, collectionName)
 	} else if function == "queryCouchPrivate" {
-		return cc.queryCouchPrivate(stub, args)
+		return cc.queryCouch(stub, args, collectionName)
 	} else if function == "filterPrivate" {
-		return cc.filterPrivate(stub, args)
+		return cc.filter(stub, args, collectionName)
 	} else if function == "filterCouchPrivate" {
-		return cc.filterCouchPrivate(stub, args)
+		return cc.filterCouch(stub, args, collectionName)
 	}
 
 	return pb.Response{Status:403, Message:"Invalid invoke function name."}
