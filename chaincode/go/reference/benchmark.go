@@ -38,8 +38,6 @@ func (cc *BenchmarkChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Respon
 		return cc.queryCouch(stub, args, "")
 	} else if function == "filter" {
 		return cc.filter(stub, args, "")
-	} else if function == "filterCouch" {
-		return cc.filterCouch(stub, args, "")
 	} else if function == "putPrivate" {
 		return cc.put(stub, args, collectionName)
 	} else if function == "editPrivate" {

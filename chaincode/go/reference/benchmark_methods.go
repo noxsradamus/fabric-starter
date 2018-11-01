@@ -159,10 +159,6 @@ func (cc *BenchmarkChaincode) filter(stub shim.ChaincodeStubInterface, args []st
 	return shim.Success(nil)
 }
 
-func (cc *BenchmarkChaincode) filterCouch(stub shim.ChaincodeStubInterface, args []string, collection string) pb.Response {
-	return shim.Success(nil)
-}
-
 func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string, collection string) ([]byte, error) {
 	logger.Debug("getQueryResultForQueryString(" + queryString + ") is running")
 
