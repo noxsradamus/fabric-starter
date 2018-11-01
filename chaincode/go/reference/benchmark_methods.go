@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"strings"
 )
 
 func (cc *BenchmarkChaincode) put(stub shim.ChaincodeStubInterface, args []string, collection string) pb.Response {
@@ -156,7 +157,30 @@ func (cc *BenchmarkChaincode) queryCouch(stub shim.ChaincodeStubInterface, args 
 }
 
 func (cc *BenchmarkChaincode) filter(stub shim.ChaincodeStubInterface, args []string, collection string) pb.Response {
-	return shim.Success(nil)
+	logger.Info("Benchmark.filter is running")
+	logger.Debug("Benchmark.filter")
+
+	valueFilter := func(data LedgerData) bool {
+		testData, ok := data.(*TestData)
+		if ok && strings.HasPrefix(testData.Value, "filter") {
+			return true
+		}
+
+		return false
+	}
+
+	result, err := Query(stub, testDataIndex, []string{}, CreateTestData, valueFilter, []string{collection})
+	if err != nil {
+		message := fmt.Sprintf("unable to perform query: %s", err.Error())
+		logger.Error(message)
+		return shim.Error(message)
+	}
+
+	logger.Debug("Result: " + string(result))
+
+	logger.Info("Benchmark.filter exited without errors")
+	logger.Debug("Success: Benchmark.filter")
+	return shim.Success(result)
 }
 
 func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string, collection string) ([]byte, error) {
