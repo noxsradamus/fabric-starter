@@ -1,11 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"fmt"
-	"encoding/json"
-	"errors"
 )
 
 func (cc *BenchmarkChaincode) put(stub shim.ChaincodeStubInterface, args []string, collection string) pb.Response {
@@ -125,7 +124,7 @@ func (cc *BenchmarkChaincode) queryAll(stub shim.ChaincodeStubInterface, args []
 	logger.Info("Benchmark.queryAll is running")
 	logger.Debug("Benchmark.queryAll")
 
-	result, err := Query(stub, testDataIndex, []string{}, CreateTestData, EmptyFilter, collection)
+	result, err := Query(stub, testDataIndex, []string{}, CreateTestData, EmptyFilter, []string{collection})
 	if err != nil {
 		message := fmt.Sprintf("unable to perform query: %s", err.Error())
 		logger.Error(message)
@@ -165,8 +164,7 @@ func (cc *BenchmarkChaincode) filterCouch(stub shim.ChaincodeStubInterface, args
 }
 
 func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string, collection string) ([]byte, error) {
-
-	ledgerDataLogger.Debug("getQueryResultForQueryString(" + queryString + ") is running")
+	logger.Debug("getQueryResultForQueryString(" + queryString + ") is running")
 
 	var it shim.StateQueryIteratorInterface
 	var err error
@@ -184,53 +182,19 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 	}
 	defer it.Close()
 
-	entries := []TestData{}
-	for it.HasNext() {
-		response, err := it.Next()
-		if err != nil {
-			message := fmt.Sprintf("unable to get an element next to a query iterator: %s", err.Error())
-			ledgerDataLogger.Error(message)
-			return nil, errors.New(message)
-		}
-
-		ledgerDataLogger.Debug(fmt.Sprintf("Response: {%s, %s}", response.Key, string(response.Value)))
-
-		entry := TestData{}
-
-		if err := entry.FillFromLedgerValue(response.Value); err != nil {
-			message := fmt.Sprintf("cannot fill entry value from response value: %s", err.Error())
-			ledgerDataLogger.Error(message)
-			return nil, errors.New(message)
-		}
-
-		_, compositeKeyParts, err := stub.SplitCompositeKey(response.Key)
-		if err != nil {
-			message := fmt.Sprintf("cannot split response key into composite key parts slice: %s", err.Error())
-			ledgerDataLogger.Error(message)
-			return nil, errors.New(message)
-		}
-
-		if err := entry.FillFromCompositeKeyParts(compositeKeyParts); err != nil {
-			message := fmt.Sprintf("cannot fill entry key from composite key parts: %s", err.Error())
-			ledgerDataLogger.Error(message)
-			return nil, errors.New(message)
-		}
-
-		if bytes, err := json.Marshal(entry); err == nil {
-			ledgerDataLogger.Debug("Entry: " + string(bytes))
-		}
-
-		entries = append(entries, entry)
-
+	entries, err := queryImpl(it, CreateTestData, stub, EmptyFilter)
+	if err != nil {
+		logger.Error(err.Error())
+		return nil, err
 	}
 
 	result, err := json.Marshal(entries)
 	if err != nil {
 		return nil, err
 	}
-	ledgerDataLogger.Debug("Result: " + string(result))
+	logger.Debug("Result: " + string(result))
 
-	ledgerDataLogger.Info(fmt.Sprintf("getQueryResultForQueryString(%s) exited without errors", queryString))
-	ledgerDataLogger.Debug("Success: getQueryResultForQueryString " + queryString)
+	logger.Info(fmt.Sprintf("getQueryResultForQueryString(%s) exited without errors", queryString))
+	logger.Debug("Success: getQueryResultForQueryString " + queryString)
 	return result, nil
 }

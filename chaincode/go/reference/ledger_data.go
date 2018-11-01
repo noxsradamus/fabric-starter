@@ -99,67 +99,44 @@ func EmptyFilter(data LedgerData) bool {
 }
 
 func Query(stub shim.ChaincodeStubInterface, index string, partialKey []string,
-	createEntry FactoryMethod, filterEntry FilterFunction, collection string) ([]byte, error) {
+	createEntry FactoryMethod, filterEntry FilterFunction, collections []string) ([]byte, error) {
 
 	ledgerDataLogger.Info(fmt.Sprintf("Query(%s) is running", index))
 	ledgerDataLogger.Debug("Query " + index)
 
-	var it shim.StateQueryIteratorInterface
-	var err error
-
-	if collection != ""{
-		logger.Debug("GetPrivateDataByPartialCompositeKey")
-		it, err = stub.GetPrivateDataByPartialCompositeKey(collection, index, partialKey)
-	} else {
-		logger.Debug("GetStateByPartialCompositeKey")
-		it, err = stub.GetStateByPartialCompositeKey(index, partialKey)
-	}
-
-	if err != nil {
-		message := fmt.Sprintf("unable to get state by partial composite key %s: %s", index, err.Error())
-		ledgerDataLogger.Error(message)
-		return nil, errors.New(message)
-	}
-	defer it.Close()
-
 	entries := []LedgerData{}
-	for it.HasNext() {
-		response, err := it.Next()
+	if len(collections) != 0 {
+		for _, collection := range collections {
+			it, err := stub.GetPrivateDataByPartialCompositeKey(collection, index, partialKey)
+			if err != nil {
+				message := fmt.Sprintf("unable to get state by partial composite key %s: %s", index, err.Error())
+				ledgerDataLogger.Error(message)
+				return nil, errors.New(message)
+			}
+
+			iteratorEntries, err := queryImpl(it, createEntry, stub, filterEntry)
+			if err != nil {
+				ledgerDataLogger.Error(err.Error())
+				return nil, err
+			}
+
+			entries = append(entries, iteratorEntries...)
+
+			it.Close()
+		}
+	} else {
+		it, err := stub.GetStateByPartialCompositeKey(index, partialKey)
 		if err != nil {
-			message := fmt.Sprintf("unable to get an element next to a query iterator: %s", err.Error())
+			message := fmt.Sprintf("unable to get state by partial composite key %s: %s", index, err.Error())
 			ledgerDataLogger.Error(message)
 			return nil, errors.New(message)
 		}
+		defer it.Close()
 
-		ledgerDataLogger.Debug(fmt.Sprintf("Response: {%s, %s}", response.Key, string(response.Value)))
-
-		entry := createEntry()
-
-		if err := entry.FillFromLedgerValue(response.Value); err != nil {
-			message := fmt.Sprintf("cannot fill entry value from response value: %s", err.Error())
-			ledgerDataLogger.Error(message)
-			return nil, errors.New(message)
-		}
-
-		_, compositeKeyParts, err := stub.SplitCompositeKey(response.Key)
+		entries, err = queryImpl(it, createEntry, stub, filterEntry)
 		if err != nil {
-			message := fmt.Sprintf("cannot split response key into composite key parts slice: %s", err.Error())
-			ledgerDataLogger.Error(message)
-			return nil, errors.New(message)
-		}
-
-		if err := entry.FillFromCompositeKeyParts(compositeKeyParts); err != nil {
-			message := fmt.Sprintf("cannot fill entry key from composite key parts: %s", err.Error())
-			ledgerDataLogger.Error(message)
-			return nil, errors.New(message)
-		}
-
-		if bytes, err := json.Marshal(entry); err == nil {
-			ledgerDataLogger.Debug("Entry: " + string(bytes))
-		}
-
-		if filterEntry(entry) {
-			entries = append(entries, entry)
+			ledgerDataLogger.Error(err.Error())
+			return nil, err
 		}
 	}
 
@@ -174,72 +151,46 @@ func Query(stub shim.ChaincodeStubInterface, index string, partialKey []string,
 	return result, nil
 }
 
-// TODO: refactor code to remove duplicates
-func QueryPrivate(stub shim.ChaincodeStubInterface, index string, partialKey []string,
-	createEntry FactoryMethod, filterEntry FilterFunction, collections []string) ([]byte, error) {
-
-	ledgerDataLogger.Info(fmt.Sprintf("QueryPrivate(%s) is running", index))
-	ledgerDataLogger.Debug("QueryPrivate " + index)
+func queryImpl(it shim.StateQueryIteratorInterface, createEntry FactoryMethod, stub shim.ChaincodeStubInterface,
+	filterEntry FilterFunction) ([]LedgerData, error) {
 
 	entries := []LedgerData{}
-	for _, collection := range collections {
-		it, err := stub.GetPrivateDataByPartialCompositeKey(collection, index, partialKey)
+
+	for it.HasNext() {
+		response, err := it.Next()
 		if err != nil {
-			message := fmt.Sprintf("unable to get state by partial composite key %s: %s", index, err.Error())
-			ledgerDataLogger.Error(message)
+			message := fmt.Sprintf("unable to get an element next to a query iterator: %s", err.Error())
 			return nil, errors.New(message)
 		}
 
-		for it.HasNext() {
-			response, err := it.Next()
-			if err != nil {
-				message := fmt.Sprintf("unable to get an element next to a query iterator: %s", err.Error())
-				ledgerDataLogger.Error(message)
-				return nil, errors.New(message)
-			}
+		ledgerDataLogger.Debug(fmt.Sprintf("Response: {%s, %s}", response.Key, string(response.Value)))
 
-			ledgerDataLogger.Debug(fmt.Sprintf("Response: {%s, %s}", response.Key, string(response.Value)))
+		entry := createEntry()
 
-			entry := createEntry()
-
-			if err := entry.FillFromLedgerValue(response.Value); err != nil {
-				message := fmt.Sprintf("cannot fill entry value from response value: %s", err.Error())
-				ledgerDataLogger.Error(message)
-				return nil, errors.New(message)
-			}
-
-			_, compositeKeyParts, err := stub.SplitCompositeKey(response.Key)
-			if err != nil {
-				message := fmt.Sprintf("cannot split response key into composite key parts slice: %s", err.Error())
-				ledgerDataLogger.Error(message)
-				return nil, errors.New(message)
-			}
-
-			if err := entry.FillFromCompositeKeyParts(compositeKeyParts); err != nil {
-				message := fmt.Sprintf("cannot fill entry key from composite key parts: %s", err.Error())
-				ledgerDataLogger.Error(message)
-				return nil, errors.New(message)
-			}
-
-			if bytes, err := json.Marshal(entry); err == nil {
-				ledgerDataLogger.Debug("Entry: " + string(bytes))
-			}
-
-			if filterEntry(entry) {
-				entries = append(entries, entry)
-			}
+		if err := entry.FillFromLedgerValue(response.Value); err != nil {
+			message := fmt.Sprintf("cannot fill entry value from response value: %s", err.Error())
+			return nil, errors.New(message)
 		}
 
-		it.Close()
+		_, compositeKeyParts, err := stub.SplitCompositeKey(response.Key)
+		if err != nil {
+			message := fmt.Sprintf("cannot split response key into composite key parts slice: %s", err.Error())
+			return nil, errors.New(message)
+		}
+
+		if err := entry.FillFromCompositeKeyParts(compositeKeyParts); err != nil {
+			message := fmt.Sprintf("cannot fill entry key from composite key parts: %s", err.Error())
+			return nil, errors.New(message)
+		}
+
+		if bytes, err := json.Marshal(entry); err == nil {
+			ledgerDataLogger.Debug("Entry: " + string(bytes))
+		}
+
+		if filterEntry(entry) {
+			entries = append(entries, entry)
+		}
 	}
 
-	result, err := json.Marshal(entries)
-	if err != nil {
-		return nil, err
-	}
-	ledgerDataLogger.Debug("Result: " + string(result))
-
-	ledgerDataLogger.Info(fmt.Sprintf("QueryPrivate(%s) exited without errors", index))
-	ledgerDataLogger.Debug("Success: QueryPrivate " + index)
-	return result, nil
+	return entries, nil
 }
