@@ -50,8 +50,6 @@ func (cc *BenchmarkChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Respon
 		return cc.queryCouch(stub, args, collectionName)
 	} else if function == "filterPrivate" {
 		return cc.filter(stub, args, collectionName)
-	} else if function == "filterCouchPrivate" {
-		return cc.filterCouch(stub, args, collectionName)
 	}
 
 	return pb.Response{Status:403, Message:"Invalid invoke function name."}

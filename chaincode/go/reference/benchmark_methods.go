@@ -19,6 +19,12 @@ func (cc *BenchmarkChaincode) put(stub shim.ChaincodeStubInterface, args []strin
 		return shim.Error(message)
 	}
 
+	if ExistsIn(stub, &data, collection) {
+		message := fmt.Sprintf("data with ID %s already exists", data.Key)
+		logger.Error(message)
+		return pb.Response{Status: 404, Message: message}
+	}
+
 	if bytes, err := json.Marshal(data); err == nil {
 		logger.Debug("Data: " + string(bytes))
 	}
