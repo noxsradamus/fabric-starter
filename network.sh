@@ -17,6 +17,8 @@ artifactsTemplatesFolder="artifact-templates"
 : ${ORG1:="a"}
 : ${ORG2:="b"}
 : ${ORG3:="c"}
+: ${PEER0:="peer0"}
+: ${PEER1:="peer1"}
 : ${MAIN_ORG:=${ORG1}}
 : ${IP1:="127.0.0.1"}
 : ${IP2:="127.0.0.1"}
@@ -31,6 +33,10 @@ echo "Use Fabric-Starter home: $FABRIC_STARTER_HOME"
 echo "Use docker compose template folder: $TEMPLATES_DOCKER_COMPOSE_FOLDER"
 echo "Use target artifact folder: $GENERATED_ARTIFACTS_FOLDER"
 echo "Use target docker-compose folder: $GENERATED_DOCKER_COMPOSE_FOLDER"
+echo "Use Fabric Version: $FABRIC_VERSION"
+echo "Use Fabric REST Version: $FABRIC_REST_VERSION"
+echo "Use 3rdParty Version: $THIRDPARTY_VERSION"
+
 
 WGET_OPTS="--verbose -N"
 CLI_TIMEOUT=10000
@@ -40,7 +46,6 @@ COMPOSE_FILE_DEV=$TEMPLATES_DOCKER_COMPOSE_FOLDER/docker-composedev.yaml
 CHAINCODE_VERSION="1.0"
 CHAINCODE_COMMON_NAME=reference
 CHAINCODE_BILATERAL_NAME=relationship
-
 CHAINCODE_COMMON_INIT='{"Args":["init","a","100","b","100"]}'
 CHAINCODE_BILATERAL_INIT='{"Args":["init","a","100","b","100"]}'
 COLLECTION_CONFIG='$GOPATH/src/reference/collections_config.json'
@@ -87,7 +92,16 @@ function removeUnwantedImages() {
   fi
 }
 
+function generateArtifacts() {
+  [[ -d $GENERATED_ARTIFACTS_FOLDER ]] || mkdir $GENERATED_ARTIFACTS_FOLDER
+  [[ -d $GENERATED_DOCKER_COMPOSE_FOLDER ]] || mkdir $GENERATED_DOCKER_COMPOSE_FOLDER
+  cp -f "$TEMPLATES_DOCKER_COMPOSE_FOLDER/base.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"
+  cp -f "$TEMPLATES_DOCKER_COMPOSE_FOLDER/base-intercept.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"
+  if [[ -d ./$composeTemplatesFolder ]]; then cp -f "./$composeTemplatesFolder/base-intercept.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"; fi
+}
+
 function removeArtifacts() {
+  generateArtifacts
   echo "Removing generated and downloaded artifacts from: $GENERATED_DOCKER_COMPOSE_FOLDER, $GENERATED_ARTIFACTS_FOLDER"
   rm $GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-*.yaml
   rm -rf $GENERATED_ARTIFACTS_FOLDER/crypto-config
@@ -247,8 +261,7 @@ function generateOrdererArtifacts() {
         generateNetworkConfig ${ORG1} ${ORG2} ${ORG3}
         # replace in configtx
         sed -e "s/DOMAIN/$DOMAIN/g" -e "s/ORG1/$ORG1/g" -e "s/ORG2/$ORG2/g" -e "s/ORG3/$ORG3/g" $TEMPLATES_ARTIFACTS_FOLDER/configtxtemplate.yaml > $GENERATED_ARTIFACTS_FOLDER/configtx.yaml
-#        createChannels=("common" "$ORG1-$ORG2" "$ORG1-$ORG3" "$ORG2-$ORG3")
-        createChannels=("common")
+        createChannels=("common" "$ORG1-$ORG2" "$ORG1-$ORG3" "$ORG2-$ORG3")
     fi
 
 
@@ -504,21 +517,23 @@ function instantiateChaincode () {
     i=$4
     cc=$5
     if [ -n "$cc" ]; then
-    cc="--collections-config $cc";
+    cc="-P \"OR('aMSP.member', 'bMSP.member', 'cMSP.member')\" --collections-config $cc";
     else
     cc="";
     fi
 
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-${org}.yaml"
 
-    for channel_name in ${channel_names[@]}; do
-        info "instantiating chaincode $n on $channel_name by $org using $f with $i"
+    for peer in ${PEER0} ${PEER1}; do
+        for channel_name in ${channel_names[@]}; do
+            info "instantiating chaincode $n on $channel_name by $org using $f with $i"
 
-        c="CORE_PEER_ADDRESS=peer0.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name  $cc --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
-        d="cli.$org.$DOMAIN"
+            c="CORE_PEER_ADDRESS=$peer.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name $cc --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+            d="cli.$org.$DOMAIN"
 
-        echo "instantiating with $d by $c"
-        docker-compose --file ${f} run --rm ${d} bash -c "${c}"
+            echo "instantiating with $d by $c"
+            docker-compose --file ${f} run --rm ${d} bash -c "${c}"
+        done
     done
 }
 
