@@ -149,6 +149,9 @@ func (cc *BenchmarkChaincode) queryCouch(stub shim.ChaincodeStubInterface, args 
 	logger.Info("Benchmark.queryCouch is running")
 	logger.Debug("Benchmark.queryCouch")
 
+	//"{\"selector\":{}}"  - get all blocks
+	//"{\"selector\":{\"value\":\"100\"}}"  - get all blocks with value 100
+
 	queryString := args[0]
 	result, err := getQueryResultForQueryString(stub, queryString, collection)
 	if err != nil {
