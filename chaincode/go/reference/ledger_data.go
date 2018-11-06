@@ -105,7 +105,8 @@ func Query(stub shim.ChaincodeStubInterface, index string, partialKey []string,
 	ledgerDataLogger.Debug("Query " + index)
 
 	entries := []LedgerData{}
-	if len(collections) != 0 {
+	fmt.Printf("Collections: %s\n",collections)
+	if len(collections) != 0 && collections[0] != "" {
 		for _, collection := range collections {
 			it, err := stub.GetPrivateDataByPartialCompositeKey(collection, index, partialKey)
 			if err != nil {
