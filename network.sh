@@ -52,7 +52,11 @@ COLLECTION_CONFIG='$GOPATH/src/reference/collections_config.json'
 #Set default State Database
 LITERAL_COUCHDB="couchdb"
 LITERAL_LEVELDB="leveldb"
-STATE_DATABASE="${LITERAL_LEVELDB}"
+STATE_DATABASE="${LITERAL_COUCHDB}"
+
+# cc example invoke:
+# export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{"Args":["put","a","100"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+# export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{"Args":["query","a"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
 
 DEFAULT_ORDERER_PORT=7050
 DEFAULT_WWW_PORT=8080
@@ -517,7 +521,7 @@ function instantiateChaincode () {
     i=$4
     cc=$5
     if [ -n "$cc" ]; then
-    cc="-P \"OR('aMSP.member', 'bMSP.member', 'cMSP.member')\" --collections-config $cc";
+    cc="-P \"AND('aMSP.member', 'bMSP.member', 'cMSP.member')\" --collections-config $cc";
     else
     cc="";
     fi
@@ -1308,16 +1312,16 @@ if [ "${MODE}" == "up" -a "${ORG}" == "" ]; then
   done
 
   createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT} ${COLLECTION_CONFIG}
-  createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
-  createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
+#  createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
+#  createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
 
   joinWarmUp ${ORG2} common ${CHAINCODE_COMMON_NAME}
-  joinWarmUp ${ORG2} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME}
-  createJoinInstantiateWarmUp ${ORG2} "${ORG2}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
+#  joinWarmUp ${ORG2} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME}
+#  createJoinInstantiateWarmUp ${ORG2} "${ORG2}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
 
   joinWarmUp ${ORG3} common ${CHAINCODE_COMMON_NAME}
-  joinWarmUp ${ORG3} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME}
-  joinWarmUp ${ORG3} "${ORG2}-${ORG3}" ${CHAINCODE_BILATERAL_NAME}
+#  joinWarmUp ${ORG3} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME}
+#  joinWarmUp ${ORG3} "${ORG2}-${ORG3}" ${CHAINCODE_BILATERAL_NAME}
 
 elif [ "${MODE}" == "down" ]; then
   for org in ${DOMAIN} ${ORG1} ${ORG2} ${ORG3}
