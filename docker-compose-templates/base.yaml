@@ -31,6 +31,9 @@ services:
     volumes:
       - /var/run/:/host/var/run/
 
+#  couchdb-base:
+#    image: hyperledger/fabric-couchdb:amd64-1.2.0
+
   cli-base:
     image: hyperledger/fabric-tools:FABRIC_VERSION
     tty: true
