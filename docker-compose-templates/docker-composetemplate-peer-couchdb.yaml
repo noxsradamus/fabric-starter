@@ -36,6 +36,8 @@ services:
       - CORE_PEER_ID=peer0.ORG.DOMAIN
       - CORE_PEER_LOCALMSPID=ORGMSP
       - CORE_PEER_ADDRESS=peer0.ORG.DOMAIN:7051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.ORG.DOMAIN:5984
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.ORG.DOMAIN:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.ORG.DOMAIN:7051
     ports:
@@ -46,6 +48,7 @@ services:
         - peer0.ORG.DOMAIN:/var/hyperledger/production
     depends_on:
       - ca.ORG.DOMAIN
+      - couchdb.ORG.DOMAIN
     PEER_EXTRA_HOSTS
 
   peer1.ORG.DOMAIN:
@@ -57,6 +60,8 @@ services:
       - CORE_PEER_ID=peer1.ORG.DOMAIN
       - CORE_PEER_LOCALMSPID=ORGMSP
       - CORE_PEER_ADDRESS=peer1.ORG.DOMAIN:7051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.ORG.DOMAIN:5984
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.ORG.DOMAIN:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.ORG.DOMAIN:7051
     ports:
@@ -67,6 +72,7 @@ services:
         - peer1.ORG.DOMAIN:/var/hyperledger/production
     depends_on:
       - ca.ORG.DOMAIN
+      - couchdb.ORG.DOMAIN
     PEER_EXTRA_HOSTS
 
   # fabric-rest api server
@@ -124,3 +130,16 @@ services:
     container_name: www.ORG.DOMAIN
     ports:
       - WWW_PORT:80
+
+  couchdb.ORG.DOMAIN:
+    container_name: couchdb.ORG.DOMAIN
+    image: hyperledger/fabric-couchdb:0.4.10
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+#    environment:
+#      - COUCHDB_USER=
+#      - COUCHDB_PASSWORD=
+    # Comment/Uncomment the port mapping if you want to hide/expose the CouchDB service,
+    # for example map it to utilize Fauxton User Interface in dev environments.
+    ports:
+      - COUCHDB_PORT:5984

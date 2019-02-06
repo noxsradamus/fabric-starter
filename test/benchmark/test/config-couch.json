@@ -1,11 +1,11 @@
 {
   "blockchain": {
     "type": "fabric",
-    "config": "benchmark/test/fabric.json"
+    "config": "benchmark/test/fabric-couch.json"
   },
   "test": {
     "name": "test",
-    "description" : "Performance benchmark LevelDB",
+    "description" : "Performance benchmark Couch",
     "clients": {
       "type": "local",
       "number": 5
@@ -53,12 +53,12 @@
       "callback" : "benchmark/test/common/edit.js"
     },
       {
-        "label" : "query",
+        "label" : "queryCouch",
         "txNumber" : [5],
         "rateControl" : [
           {"type": "fixed-rate", "opts": {"tps" : 1}}
         ],
-        "callback" : "benchmark/test/common/query.js"
+        "callback" : "benchmark/test/common/couchdb/queryCouch.js"
       },
       {
         "label" : "queryAll",
@@ -70,12 +70,12 @@
         "callback" : "benchmark/test/common/queryAll.js"
       },
       {
-        "label" : "filter",
+        "label" : "filterCouch",
         "txNumber" : [5],
         "rateControl" : [
           {"type": "fixed-rate", "opts": {"tps" : 1}}
         ],
-        "callback" : "benchmark/test/common/filter.js"
+        "callback" : "benchmark/test/common/couchdb/filterCouch.js"
       }]
   },
   "monitor": {

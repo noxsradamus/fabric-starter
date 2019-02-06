@@ -24,9 +24,10 @@ artifactsTemplatesFolder="artifact-templates"
 : ${IP2:="127.0.0.1"}
 : ${IP3:="127.0.0.1"}
 
-: ${FABRIC_VERSION:="1.2.0"}
-: ${THIRDPARTY_VERSION:="0.4.12"}
-: ${FABRIC_REST_VERSION:="0.11.1"}
+: ${FABRIC_VERSION:="1.3.0"}
+: ${THIRDPARTY_VERSION:="0.4.14"}
+: ${FABRIC_REST_VERSION:="0.13.0"}
+
 
 echo "Use Fabric-Starter home: $FABRIC_STARTER_HOME"
 echo "Use docker compose template folder: $TEMPLATES_DOCKER_COMPOSE_FOLDER"
@@ -48,7 +49,10 @@ CHAINCODE_BILATERAL_NAME=relationship
 CHAINCODE_COMMON_INIT='{"Args":["init","a","100","b","100"]}'
 CHAINCODE_BILATERAL_INIT='{"Args":["init","a","100","b","100"]}'
 COLLECTION_CONFIG='$GOPATH/src/reference/collections_config.json'
-
+#Set default State Database
+LITERAL_COUCHDB="couchdb"
+LITERAL_LEVELDB="leveldb"
+STATE_DATABASE="${LITERAL_LEVELDB}"
 
 DEFAULT_ORDERER_PORT=7050
 DEFAULT_WWW_PORT=8080
@@ -261,6 +265,12 @@ function generateOrdererArtifacts() {
     fi
 
 
+    for channel_name in ${createChannels[@]}
+    do
+        echo "Generating channel config transaction for $channel_name"
+        docker-compose --file ${f} run --rm -e FABRIC_CFG_PATH=/etc/hyperledger/artifacts "cli.$DOMAIN" configtxgen -profile "$channel_name" -outputCreateChannelTx "./channel/$channel_name.tx" -channelID "$channel_name"
+    done
+
     # replace in cryptogen
     sed -e "s/DOMAIN/$DOMAIN/g" $TEMPLATES_ARTIFACTS_FOLDER/cryptogentemplate-orderer.yaml > "$GENERATED_ARTIFACTS_FOLDER/cryptogen-$DOMAIN.yaml"
 
@@ -327,6 +337,10 @@ function generatePeerArtifacts() {
     peer1_port=$7
     peer1_event_port=$8
 
+    if [ "${STATE_DATABASE}" == "couchdb" ]; then
+    couchdb_port=$9
+    fi
+
     : ${api_port:=${DEFAULT_API_PORT}}
     : ${www_port:=${DEFAULT_WWW_PORT}}
     : ${ca_port:=${DEFAULT_CA_PORT}}
@@ -334,17 +348,27 @@ function generatePeerArtifacts() {
     : ${peer0_event_port:=${DEFAULT_PEER0_EVENT_PORT}}
     : ${peer1_port:=${DEFAULT_PEER1_PORT}}
     : ${peer1_event_port:=${DEFAULT_PEER1_EVENT_PORT}}
-
+    if [ "${STATE_DATABASE}" == "couchdb" ]; then
+    : ${couchdb_port:=${DEFAULT_COUCHDB_PORT}}
+    echo "Creating peer yaml files with $DOMAIN, $org, $api_port, $www_port, $ca_port, $peer0_port, $peer0_event_port, $peer1_port, $peer1_event_port, $couchdb_port"
+    compose_template=$TEMPLATES_DOCKER_COMPOSE_FOLDER/docker-composetemplate-peer-couchdb.yaml
+    else
     echo "Creating peer yaml files with $DOMAIN, $org, $api_port, $www_port, $ca_port, $peer0_port, $peer0_event_port, $peer1_port, $peer1_event_port"
-
     compose_template=$TEMPLATES_DOCKER_COMPOSE_FOLDER/docker-composetemplate-peer.yaml
+    fi
+
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-$org.yaml"
 
     # cryptogen yaml
     sed -e "s/DOMAIN/$DOMAIN/g" -e "s/ORG/$org/g" $TEMPLATES_ARTIFACTS_FOLDER/cryptogentemplate-peer.yaml > $GENERATED_ARTIFACTS_FOLDER/"cryptogen-$org.yaml"
 
     # docker-compose yaml
+
+    if [ "${STATE_DATABASE}" == "couchdb" ]; then
+    sed -e "s/PEER_EXTRA_HOSTS/$peer_extra_hosts/g" -e "s/CLI_EXTRA_HOSTS/$cli_extra_hosts/g" -e "s/API_EXTRA_HOSTS/$api_extra_hosts/g" -e "s/DOMAIN/$DOMAIN/g" -e "s/\([^ ]\)ORG/\1$org/g" -e "s/API_PORT/$api_port/g" -e "s/WWW_PORT/$www_port/g" -e "s/CA_PORT/$ca_port/g" -e "s/PEER0_PORT/$peer0_port/g" -e "s/PEER0_EVENT_PORT/$peer0_event_port/g" -e "s/PEER1_PORT/$peer1_port/g" -e "s/PEER1_EVENT_PORT/$peer1_event_port/g" -e "s/COUCHDB_PORT/$couchdb_port/g" ${compose_template} | awk '{gsub(/\[newline\]/, "\n")}1' > ${f}
+    else
     sed -e "s/PEER_EXTRA_HOSTS/$peer_extra_hosts/g" -e "s/CLI_EXTRA_HOSTS/$cli_extra_hosts/g" -e "s/API_EXTRA_HOSTS/$api_extra_hosts/g" -e "s/DOMAIN/$DOMAIN/g" -e "s/\([^ ]\)ORG/\1$org/g" -e "s/API_PORT/$api_port/g" -e "s/WWW_PORT/$www_port/g" -e "s/CA_PORT/$ca_port/g" -e "s/PEER0_PORT/$peer0_port/g" -e "s/PEER0_EVENT_PORT/$peer0_event_port/g" -e "s/PEER1_PORT/$peer1_port/g" -e "s/PEER1_EVENT_PORT/$peer1_event_port/g" ${compose_template} | awk '{gsub(/\[newline\]/, "\n")}1' > ${f}
+    fi
 
     # fabric-ca-server-config yaml
     sed -e "s/ORG/$org/g" $TEMPLATES_ARTIFACTS_FOLDER/fabric-ca-server-configtemplate.yaml > $GENERATED_ARTIFACTS_FOLDER/"fabric-ca-server-config-$org.yaml"
@@ -823,7 +847,11 @@ function addOrg() {
   rm -f $GENERATED_ARTIFACTS_FOLDER/newOrgMSP.json $GENERATED_ARTIFACTS_FOLDER/config.* $GENERATED_ARTIFACTS_FOLDER/update.* $GENERATED_ARTIFACTS_FOLDER/updated_config.* $GENERATED_ARTIFACTS_FOLDER/update_in_envelope.*
 
   # ex. generatePeerArtifacts foo 4005 8086 1254 1251 1253 1256 1258
-  generatePeerArtifacts ${org} ${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT}
+  if [ "${STATE_DATABASE}" == "couchdb" ]; then
+    generatePeerArtifacts ${org} ${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT} ${COUCHDB_PORT}
+  else
+    generatePeerArtifacts ${org} ${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT}
+  fi
 
   dockerComposeUp ${org}
 
@@ -1211,6 +1239,10 @@ function printHelp () {
   echo "      - 'generate' - generate required certificates and genesis block"
   echo "      - 'logs' - print and follow all docker instances log files"
   echo
+  echo "    -s <state> - one of 'couchdb' or 'leveldb'"
+  echo "      - 'couchdb' - set CouchDB as State Database"
+  echo "      - 'leveldb' - set LevelDB as State Database"
+
   echo "Typically, one would first generate the required certificates and "
   echo "genesis block, then bring up the network. e.g.:"
   echo
@@ -1221,13 +1253,15 @@ function printHelp () {
 }
 
 # Parse commandline args
-while getopts "h?m:o:a:w:c:0:1:2:3:k:v:i:n:M:I:R:P:" opt; do
+while getopts "h?m:o:a:w:c:0:1:2:3:k:v:i:n:M:I:R:P:s:" opt; do
   case "$opt" in
     h|\?)
       printHelp
       exit 0
     ;;
     m)  MODE=$OPTARG
+    ;;
+    s)  STATE_DATABASE=$OPTARG
     ;;
     v)  CHAINCODE_VERSION=$OPTARG
     ;;
@@ -1276,6 +1310,7 @@ if [ "${MODE}" == "up" -a "${ORG}" == "" ]; then
   for org in ${ORG1} ${ORG2} ${ORG3}
   do
     installAll ${org}
+#    createJoinInstantiateWarmUp ${org} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT} ${COLLECTION_CONFIG}
   done
 
   createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT} # ${COLLECTION_CONFIG}
@@ -1331,7 +1366,13 @@ elif [ "${MODE}" == "generate-orderer" ]; then  # params: -M ORG (optional)
 elif [ "${MODE}" == "generate-peer" ]; then # params: -o ORG -R true(optional- REMOTE_ORG)
   clean
   removeArtifacts
-  generatePeerArtifacts ${ORG} #${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT}
+
+  if [ "${STATE_DATABASE}" == "couchdb" ]; then
+  generatePeerArtifacts ${ORG} ${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT} ${COUCHDB_PORT}
+  else
+    generatePeerArtifacts ${ORG} ${API_PORT} ${WWW_PORT} ${CA_PORT} ${PEER0_PORT} ${PEER0_EVENT_PORT} ${PEER1_PORT} ${PEER1_EVENT_PORT}
+  fi
+
   servePeerArtifacts ${ORG}
   #if [ -n "$REMOTE_ORG" ]; then
     addOrgToCliHosts ${ORG} "orderer" ${IP_ORDERER}
