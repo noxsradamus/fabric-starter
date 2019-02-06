@@ -17,13 +17,15 @@ artifactsTemplatesFolder="artifact-templates"
 : ${ORG1:="a"}
 : ${ORG2:="b"}
 : ${ORG3:="c"}
+: ${PEER0:="peer0"}
+: ${PEER1:="peer1"}
 : ${MAIN_ORG:=${ORG1}}
 : ${IP1:="127.0.0.1"}
 : ${IP2:="127.0.0.1"}
 : ${IP3:="127.0.0.1"}
 
-: ${FABRIC_VERSION:="1.1.0"}
-: ${THIRDPARTY_VERSION:="0.4.8"}
+: ${FABRIC_VERSION:="1.2.0"}
+: ${THIRDPARTY_VERSION:="0.4.12"}
 : ${FABRIC_REST_VERSION:="0.11.1"}
 
 echo "Use Fabric-Starter home: $FABRIC_STARTER_HOME"
@@ -45,6 +47,8 @@ CHAINCODE_COMMON_NAME=reference
 CHAINCODE_BILATERAL_NAME=relationship
 CHAINCODE_COMMON_INIT='{"Args":["init","a","100","b","100"]}'
 CHAINCODE_BILATERAL_INIT='{"Args":["init","a","100","b","100"]}'
+COLLECTION_CONFIG='$GOPATH/src/reference/collections_config.json'
+
 
 DEFAULT_ORDERER_PORT=7050
 DEFAULT_WWW_PORT=8080
@@ -257,12 +261,6 @@ function generateOrdererArtifacts() {
     fi
 
 
-    for channel_name in ${createChannels[@]}
-    do
-        echo "Generating channel config transaction for $channel_name"
-        docker-compose --file ${f} run --rm -e FABRIC_CFG_PATH=/etc/hyperledger/artifacts "cli.$DOMAIN" configtxgen -profile "$channel_name" -outputCreateChannelTx "./channel/$channel_name.tx" -channelID "$channel_name"
-    done
-
     # replace in cryptogen
     sed -e "s/DOMAIN/$DOMAIN/g" $TEMPLATES_ARTIFACTS_FOLDER/cryptogentemplate-orderer.yaml > "$GENERATED_ARTIFACTS_FOLDER/cryptogen-$DOMAIN.yaml"
 
@@ -274,7 +272,24 @@ function generateOrdererArtifacts() {
     echo "Generating orderer genesis block with configtxgen"
     docker-compose --file ${f} run --rm -e FABRIC_CFG_PATH=/etc/hyperledger/artifacts "cli.$DOMAIN" configtxgen -profile OrdererGenesis -outputBlock ./channel/genesis.block
 
-    echo "Changing artifacts file ownership"
+#    echo "Changing artifacts file ownership"
+#    docker-compose --file ${f} run --rm "cli.$DOMAIN" bash -c "chown -R $UID:$GID ."
+
+
+    for channel_name in ${createChannels[@]}
+    do
+        echo "Generating channel config transaction for $channel_name"
+        docker-compose --file ${f} run --rm -e FABRIC_CFG_PATH=/etc/hyperledger/artifacts "cli.$DOMAIN" configtxgen -profile "$channel_name" -outputCreateChannelTx "./channel/$channel_name.tx" -channelID "$channel_name"
+
+        for myorg in ${ORG1} ${ORG2} ${ORG3}
+        do
+            echo "Generating anchor peers update for ${myorg}"
+            docker-compose --file $GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-${myorg}.yaml run --rm -e FABRIC_CFG_PATH=/etc/hyperledger/artifacts "cli.$myorg.$DOMAIN" configtxgen -profile "$channel_name" --outputAnchorPeersUpdate "./channel/${myorg}MSPanchors-$channel_name.tx" -channelID "$channel_name" -asOrg ${myorg}MSP
+        done
+
+    done
+
+    echo "changing ownership of channel block files"
     docker-compose --file ${f} run --rm "cli.$DOMAIN" bash -c "chown -R $UID:$GID ."
 }
 
@@ -433,6 +448,14 @@ function generateChannelConfig() {
 
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-$DOMAIN.yaml"
     docker-compose --file ${f} run --rm -e FABRIC_CFG_PATH=/etc/hyperledger/artifacts "cli.$DOMAIN" configtxgen -profile "$channel_name" -outputCreateChannelTx "./channel/$channel_name.tx" -channelID "$channel_name"
+
+    for org in "${@:3}"
+    do
+        docker-compose --file ${f} run --rm -e FABRIC_CFG_PATH=/etc/hyperledger/artifacts "cli.$DOMAIN" configtxgen -profile "$channel_name" --outputAnchorPeersUpdate "./channel/${org}MSPanchors-$channel_name.tx" -channelID "$channel_name" -asOrg ${org}MSP
+    done
+
+    echo "changing ownership of channel block files"
+    docker-compose --file ${f} run --rm "cli.$DOMAIN" bash -c "chown -R $UID:$GID ."
 }
 
 function createChannel () {
@@ -444,6 +467,11 @@ function createChannel () {
 
     echo "docker-compose --file ${f} run --rm \"cli.$org.$DOMAIN\" bash -c \"peer channel create -o orderer.$DOMAIN:7050 -c $channel_name -f /etc/hyperledger/artifacts/channel/$channel_name.tx --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt\""
     docker-compose --file ${f} run --rm "cli.$org.$DOMAIN" bash -c "peer channel create -o orderer.$DOMAIN:7050 -c $channel_name -f /etc/hyperledger/artifacts/channel/$channel_name.tx --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+
+    sleep 2
+
+    echo "docker-compose --file ${f} run --rm \"cli.$org.$DOMAIN\" bash -c \"peer channel update -o orderer.$DOMAIN:7050 -c $channel_name -f /etc/hyperledger/artifacts/channel/${org}MSPanchors-$channel_name.tx --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt\""
+    docker-compose --file ${f} run --rm "cli.$org.$DOMAIN" bash -c "peer channel update -o orderer.$DOMAIN:7050 -c $channel_name -f /etc/hyperledger/artifacts/channel/${org}MSPanchors-$channel_name.tx --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
 
     echo "changing ownership of channel block files"
     docker-compose --file ${f} run --rm "cli.$DOMAIN" bash -c "chown -R $UID:$GID ."
@@ -469,16 +497,25 @@ function instantiateChaincode () {
     channel_names=($2)
     n=$3
     i=$4
+    cc=$5
+    if [ -z "$cc" ]; then
+    cc="";
+    else
+    cc="-P \"OR('aMSP.member', 'bMSP.member', 'cMSP.member')\" --collections-config $cc";
+    fi
+
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-${org}.yaml"
 
-    for channel_name in ${channel_names[@]}; do
-        info "instantiating chaincode $n on $channel_name by $org using $f with $i"
+    for peer in ${PEER0} ${PEER1}; do
+        for channel_name in ${channel_names[@]}; do
+            info "instantiating chaincode $n on $channel_name by $org using $f with $i"
 
-        c="CORE_PEER_ADDRESS=peer0.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
-        d="cli.$org.$DOMAIN"
+            c="CORE_PEER_ADDRESS=$peer.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name $cc --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+            d="cli.$org.$DOMAIN"
 
-        echo "instantiating with $d by $c"
-        docker-compose --file ${f} run --rm ${d} bash -c "${c}"
+            echo "instantiating with $d by $c"
+            docker-compose --file ${f} run --rm ${d} bash -c "${c}"
+        done
     done
 }
 
@@ -600,11 +637,11 @@ function createJoinInstantiateWarmUp() {
   channel_name=${2}
   chaincode_name=${3}
   chaincode_init=${4}
+  collections=${5}
 
   createChannel ${org} ${channel_name}
   joinChannel ${org} ${channel_name}
-  instantiateChaincode ${org} ${channel_name} ${chaincode_name} ${chaincode_init}
-#  sleep 2
+  instantiateChaincode ${org} ${channel_name} ${chaincode_name} ${chaincode_init} ${collections}
 #  warmUpChaincode ${org} ${channel_name} ${chaincode_name}
 }
 
@@ -1233,6 +1270,7 @@ if [ "${MODE}" == "up" -a "${ORG}" == "" ]; then
   for org in ${DOMAIN} ${ORG1} ${ORG2} ${ORG3}
   do
     dockerComposeUp ${org}
+    sleep 2
   done
 
   for org in ${ORG1} ${ORG2} ${ORG3}
@@ -1240,7 +1278,7 @@ if [ "${MODE}" == "up" -a "${ORG}" == "" ]; then
     installAll ${org}
   done
 
-  createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT}
+  createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT} # ${COLLECTION_CONFIG}
   createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
   createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
 
@@ -1265,12 +1303,22 @@ elif [ "${MODE}" == "clean" ]; then
 elif [ "${MODE}" == "generate" ]; then
   clean
   removeArtifacts
-  setDockerVersions "$GENERATED_DOCKER_COMPOSE_FOLDER/base.yaml"
-  setDockerVersions "$GENERATED_DOCKER_COMPOSE_FOLDER/base-intercept.yaml"
 
-  generatePeerArtifacts ${ORG1} 4000 8081 7054 7051 7053 7056 7058
-  generatePeerArtifacts ${ORG2} 4001 8082 8054 8051 8053 8056 8058
-  generatePeerArtifacts ${ORG3} 4002 8083 9054 9051 9053 9056 9058
+  [[ -d $GENERATED_ARTIFACTS_FOLDER ]] || mkdir $GENERATED_ARTIFACTS_FOLDER
+  [[ -d $GENERATED_DOCKER_COMPOSE_FOLDER ]] || mkdir $GENERATED_DOCKER_COMPOSE_FOLDER
+  cp -f "$TEMPLATES_DOCKER_COMPOSE_FOLDER/base.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"
+  cp -f "$TEMPLATES_DOCKER_COMPOSE_FOLDER/base-intercept.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"
+  if [[ -d ./$composeTemplatesFolder ]]; then cp -f "./$composeTemplatesFolder/base-intercept.yaml" "$GENERATED_DOCKER_COMPOSE_FOLDER"; fi
+
+  file_base="$GENERATED_DOCKER_COMPOSE_FOLDER/base.yaml"
+  file_base_intercept="$GENERATED_DOCKER_COMPOSE_FOLDER/base-intercept.yaml"
+
+  setDockerVersions $file_base
+  setDockerVersions $file_base_intercept
+
+  generatePeerArtifacts ${ORG1} 4000 8081 7054 7051 7053 7056 7058 5984
+  generatePeerArtifacts ${ORG2} 4001 8082 8054 8051 8053 8056 8058 6984
+  generatePeerArtifacts ${ORG3} 4002 8083 9054 9051 9053 9056 9058 7984
   generateOrdererDockerCompose ${ORG1}
   generateOrdererArtifacts
   #generateWait
