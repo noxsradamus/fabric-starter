@@ -27,4 +27,5 @@ build
 /artifacts/config.*
 /artifacts/config_block.*
 /artifacts/newOrgMSP.json
+/artifacts/*
 /dockercompose/*.yaml
