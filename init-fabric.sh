@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # adjust ---------------
-: ${FABRIC_VERSION:="1.2.0"}
+: ${FABRIC_VERSION:="1.4.0"}
 #-----------------------
 FABRIC_PACK="amd64-${FABRIC_VERSION}"
 
@@ -31,14 +31,12 @@ sudo docker pull hyperledger/fabric-ccenv:${FABRIC_PACK}
 echo "Pull hyperledger/fabric-tools"
 sudo docker pull hyperledger/fabric-tools:${FABRIC_PACK}
 
-echo "Pull hyperledger/fabric-baseos"
-sudo docker pull hyperledger/fabric-baseos:x86_64-0.4.6
 echo "Pull hyperledger/fabric-rest"
-sudo docker pull maxxx1313/fabric-rest
+sudo docker pull dockeraltoros/fabric-rest
 echo "Pull nginx"
 sudo docker pull nginx
-echo "Pull node:6-alpine"
-sudo docker pull node:6-alpine
+echo "Pull node:8-alpine"
+sudo docker pull node:8-alpine
 export FABRIC_PACK
 
 

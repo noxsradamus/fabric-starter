@@ -24,7 +24,7 @@ artifactsTemplatesFolder="artifact-templates"
 : ${IP2:="127.0.0.1"}
 : ${IP3:="127.0.0.1"}
 
-: ${FABRIC_VERSION:="1.3.0"}
+: ${FABRIC_VERSION:="1.4.0"}
 : ${THIRDPARTY_VERSION:="0.4.14"}
 : ${FABRIC_REST_VERSION:="0.13.0"}
 
@@ -518,6 +518,7 @@ function joinChannel() {
 }
 
 function instantiateChaincode () {
+    sleep 3
     org=$1
     channel_names=($2)
     n=$3
@@ -526,12 +527,13 @@ function instantiateChaincode () {
     if [ -z "$cc" ]; then
     cc="";
     else
-    cc="-P \"OR('aMSP.member', 'bMSP.member', 'cMSP.member')\" --collections-config $cc";
+    cc="--collections-config $cc";
+    read zzzz
     fi
 
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-${org}.yaml"
 
-    for peer in ${PEER0} ${PEER1}; do
+    for peer in ${PEER0}; do
         for channel_name in ${channel_names[@]}; do
             info "instantiating chaincode $n on $channel_name by $org using $f with $i"
 
@@ -1314,7 +1316,7 @@ if [ "${MODE}" == "up" -a "${ORG}" == "" ]; then
 #    createJoinInstantiateWarmUp ${org} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT} ${COLLECTION_CONFIG}
   done
 
-  createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT} ${COLLECTION_CONFIG}
+  createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT} #${COLLECTION_CONFIG}
   createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
   createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
 
