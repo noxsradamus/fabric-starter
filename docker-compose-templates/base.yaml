@@ -60,3 +60,13 @@ services:
     image: nginx
     volumes:
       - ../www/artifacts:/usr/share/nginx/html:ro
+
+  zookeeper-base:
+    image: hyperledger/fabric-zookeeper
+
+  kafka-base:
+    image: hyperledger/fabric-kafka
+    environment:
+      - KAFKA_MESSAGE_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+      - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
