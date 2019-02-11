@@ -531,13 +531,16 @@ function instantiateChaincode () {
     read zzzz
     fi
 
+    policy=$6
+    if [ -n "$policy" ]; then policy="-P \"$policy\""; fi
+
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-${org}.yaml"
 
     for peer in ${PEER0}; do
         for channel_name in ${channel_names[@]}; do
-            info "instantiating chaincode $n on $channel_name by $org using $f with $i"
+            info "instantiating chaincode $n on $channel_name by $org using $f with policy $policy and $i"
 
-            c="CORE_PEER_ADDRESS=$peer.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name $cc --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+            c="CORE_PEER_ADDRESS=$peer.$org.$DOMAIN:7051 peer chaincode instantiate -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name $cc "$policy" --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
             d="cli.$org.$DOMAIN"
 
             echo "instantiating with $d by $c"
@@ -665,10 +668,11 @@ function createJoinInstantiateWarmUp() {
   chaincode_name=${3}
   chaincode_init=${4}
   collections=${5}
+  policy=${6}
 
   createChannel ${org} ${channel_name}
   joinChannel ${org} ${channel_name}
-  instantiateChaincode ${org} ${channel_name} ${chaincode_name} ${chaincode_init} ${collections}
+  instantiateChaincode ${org} ${channel_name} ${chaincode_name} ${chaincode_init} ${collections} ${policy}
 #  warmUpChaincode ${org} ${channel_name} ${chaincode_name}
 }
 
@@ -1317,7 +1321,8 @@ if [ "${MODE}" == "up" -a "${ORG}" == "" ]; then
   done
 
   createJoinInstantiateWarmUp ${ORG1} common ${CHAINCODE_COMMON_NAME} ${CHAINCODE_COMMON_INIT} #${COLLECTION_CONFIG}
-  createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
+  instantiateChaincode ${ORG1} common ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
+  createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG2}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT} "" "AND('$ORG1.member','$ORG2.member')"
   createJoinInstantiateWarmUp ${ORG1} "${ORG1}-${ORG3}" ${CHAINCODE_BILATERAL_NAME} ${CHAINCODE_BILATERAL_INIT}
 
   joinWarmUp ${ORG2} common ${CHAINCODE_COMMON_NAME}
