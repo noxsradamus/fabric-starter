@@ -54,10 +54,10 @@ Organizations:
         Policies:
             Readers:
                 Type: Signature
-                Rule: "OR('ORG1MSP.admin', 'ORG1MSP.peer', 'ORG1MSP.client')"
+                Rule: "OR('ORG1MSP.member')"
             Writers:
                 Type: Signature
-                Rule: "OR('ORG1MSP.admin', 'ORG1MSP.client')"
+                Rule: "OR('ORG1MSP.member')"
             Admins:
                 Type: Signature
                 Rule: "OR('ORG1MSP.admin')"
@@ -77,10 +77,10 @@ Organizations:
         Policies:
             Readers:
                 Type: Signature
-                Rule: "OR('ORG2MSP.admin', 'ORG2MSP.peer', 'ORG2MSP.client')"
+                Rule: "OR('ORG2MSP.member')"
             Writers:
                 Type: Signature
-                Rule: "OR('ORG2MSP.admin', 'ORG2MSP.client')"
+                Rule: "OR('ORG2MSP.member')"
             Admins:
                 Type: Signature
                 Rule: "OR('ORG2MSP.admin')"
@@ -95,10 +95,10 @@ Organizations:
         Policies:
             Readers:
                 Type: Signature
-                Rule: "OR('ORG3MSP.admin', 'ORG3MSP.peer', 'ORG3MSP.client')"
+                Rule: "OR('ORG3MSP.member')"
             Writers:
                 Type: Signature
-                Rule: "OR('ORG3MSP.admin', 'ORG3MSP.client')"
+                Rule: "OR('ORG3MSP.member')"
             Admins:
                 Type: Signature
                 Rule: "OR('ORG3MSP.admin')"
