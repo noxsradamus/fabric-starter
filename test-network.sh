@@ -17,7 +17,7 @@ CHAINCODE_COMMON_INIT='{"Args":["init","a","100","b","100"]}'
 CHAINCODE_BILATERAL_INIT='{"Args":["init","a","100","b","100"]}'
 COLLECTION_CONFIG='$GOPATH/src/reference/collections_config.json'
 
-COMMON_POLICY=""
+COMMON_POLICY="AND('a.member','b.member','c.member')"
 CH_AB_POLICY=""
 CH_AC_POLICY=""
 
@@ -46,10 +46,10 @@ function installChaincode() {
 
 function upgradeChaincode() {
     org=$1
-    n=$2
+    channel_name=$2
     v=$3
-    i=$4
-    channel_names=($5)
+    n=$4
+    i=$5
     policy=$6
     if [ -n "$policy" ]; then policy="-P \"$policy\""; else policy=""; fi
 
@@ -62,16 +62,16 @@ function upgradeChaincode() {
 
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-${org}.yaml"
 
-    for peer in ${PEER0}; do
-        for channel_name in ${channel_names[@]}; do
+    for peer in "peer0"; do
+      #  for channel_name in ${channel_names[@]}; do
             info "Upgrading chaincode $n on $channel_name by $org using $f with policy $policy and $i"
 
-            c="CORE_PEER_ADDRESS=$peer.$org.$DOMAIN:7051 peer chaincode upgrade -n $n -v ${CHAINCODE_VERSION} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name $cc $policy --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+            c="CORE_PEER_ADDRESS=$peer.$org.$DOMAIN:7051 peer chaincode upgrade -n $n -v ${v} -c '$i' -o orderer.$DOMAIN:7050 -C $channel_name $cc $policy --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
             d="cli.$org.$DOMAIN"
 
             echo "Upgrading with $d by $c"
             docker-compose --file ${f} run --rm ${d} bash -c "${c}"
-        done
+    #    done
     done
 }
 
@@ -95,5 +95,7 @@ upgradeChaincode "${ORG1}" "${ORG1}-${ORG3}" "$chaincode_version" "${CHAINCODE_B
 
 echo "=== Testing chaincodes"
 
-docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{\"Args\":[\"invokeChaincode\",\"a-b\",\"relationship\",\"move\",\"a\",\"b\",\"15\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
-docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode query -n reference -c '{\"Args\":[\"getResponse\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+#docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{\"Args\":[\"invokeChaincode\",\"common\",\"relationship\",\"move\",\"a\",\"b\",\"15\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{\"Args\":[\"move\",\"a\",\"b\",\"23\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+#docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{\"Args\":[\"invokeChaincode\",\"common\",\"relationship\",\"query\",\"a\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+#docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode query -n reference -c '{\"Args\":[\"getResponse\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
