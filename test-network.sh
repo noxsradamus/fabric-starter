@@ -96,6 +96,6 @@ upgradeChaincode "${ORG1}" "${ORG1}-${ORG3}" "$chaincode_version" "${CHAINCODE_B
 echo "=== Testing chaincodes"
 
 #docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{\"Args\":[\"invokeChaincode\",\"common\",\"relationship\",\"move\",\"a\",\"b\",\"15\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
-docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{\"Args\":[\"move\",\"a\",\"b\",\"23\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
+docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{\"Args\":[\"put\",\"k\",\"v\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
 #docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode invoke -n reference -c '{\"Args\":[\"invokeChaincode\",\"common\",\"relationship\",\"query\",\"a\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
 #docker exec cli.${ORG1}.${DOMAIN} bash -c "export CORE_PEER_ADDRESS=peer0.a.example.com:7051 && peer chaincode query -n reference -c '{\"Args\":[\"getResponse\"]}' -o orderer.example.com:7050 -C common --tls --cafile /etc/hyperledger/crypto/orderer/tls/ca.crt"
