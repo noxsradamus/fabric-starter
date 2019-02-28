@@ -56,15 +56,6 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	logger.Debug("Invoke")
 
-	creatorBytes, err := stub.GetCreator()
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	name, org := getCreator(creatorBytes)
-
-	logger.Debug("transaction creator " + name + "@" + org)
-
 	function, args := stub.GetFunctionAndParameters()
 	if function == "put" {
 		return t.put(stub, args)
