@@ -73,9 +73,16 @@ DEFAULT_API_EXTRA_HOSTS3="extra_hosts:[newline]      - orderer.$DOMAIN:$IP_ORDER
 
 GID=$(id -g)
 
+# Handle MacOS sed
+ARCH=$(uname -s | grep Darwin)
+SED_OPTS="-i"
+if [ "$ARCH" == "Darwin" ]; then
+    SED_OPTS="-it"
+fi
+
 function setDockerVersions() {
     echo "set Docker image versions for $1"
-    sed -i -e "s/FABRIC_VERSION/$FABRIC_VERSION/g" -e "s/THIRDPARTY_VERSION/$THIRDPARTY_VERSION/g" -e "s/FABRIC_REST_VERSION/$FABRIC_REST_VERSION/g" $1
+    sed $SED_OPTS -e "s/FABRIC_VERSION/$FABRIC_VERSION/g" -e "s/THIRDPARTY_VERSION/$THIRDPARTY_VERSION/g" -e "s/FABRIC_REST_VERSION/$FABRIC_REST_VERSION/g" $1
 }
 
 function removeUnwantedContainers() {
@@ -388,7 +395,7 @@ function generatePeerArtifacts() {
     echo "Adding generated CA private keys filenames to $f"
     ca_private_key=$(basename `ls -t $GENERATED_ARTIFACTS_FOLDER/crypto-config/peerOrganizations/"$org.$DOMAIN"/ca/*_sk`)
     [[ -z  ${ca_private_key}  ]] && echo "empty CA private key" && exit 1
-    sed -i -e "s/CA_PRIVATE_KEY/${ca_private_key}/g" ${f}
+    sed $SED_OPTS -e "s/CA_PRIVATE_KEY/${ca_private_key}/g" ${f}
 
     # replace in configtx
     sed -e "s/DOMAIN/$DOMAIN/g" -e "s/ORG/$org/g" $TEMPLATES_ARTIFACTS_FOLDER/configtx-orgtemplate.yaml > $GENERATED_ARTIFACTS_FOLDER/configtx.yaml
@@ -1560,3 +1567,8 @@ fi
 
 endtime=$(date +%s)
 info "Finished in $(($endtime - $starttime)) seconds"
+
+# Delete yamlt files in MacOS
+if [ "$ARCH" == "Darwin" ]; then
+    find . -name "*.yamlt" -type f -delete
+fi
