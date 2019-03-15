@@ -535,7 +535,6 @@ function instantiateChaincode () {
     cc="";
     else
     cc="--collections-config $cc";
-    read zzzz
     fi
 
     f="$GENERATED_DOCKER_COMPOSE_FOLDER/docker-compose-${org}.yaml"
