@@ -704,6 +704,14 @@ function downloadMemberMSP() {
 
     info "downloading member MSP files using $f"
 
+    # Note: this is needed to change the docker version tag in the base.yaml
+    # otherwise the docker-compose command will crash with error "... fabric-tools:FABRIC_VERSION"
+    # not found
+
+    file_base="$GENERATED_DOCKER_COMPOSE_FOLDER/base.yaml"
+    file_base_intercept="$GENERATED_DOCKER_COMPOSE_FOLDER/base-intercept.yaml"
+    setDockerVersions $file_base
+    
    #${ORG1} ${ORG2} ${ORG3}
 
     c="for ORG in ${@}; do wget ${WGET_OPTS} --directory-prefix crypto-config/peerOrganizations/\$ORG.$DOMAIN/msp/admincerts http://www.\$ORG.$DOMAIN:$DEFAULT_WWW_PORT/crypto-config/peerOrganizations/\$ORG.$DOMAIN/msp/admincerts/Admin@\$ORG.$DOMAIN-cert.pem && wget ${WGET_OPTS} --directory-prefix crypto-config/peerOrganizations/\$ORG.$DOMAIN/msp/cacerts http://www.\$ORG.$DOMAIN:$DEFAULT_WWW_PORT/crypto-config/peerOrganizations/\$ORG.$DOMAIN/msp/cacerts/ca.\$ORG.$DOMAIN-cert.pem && wget ${WGET_OPTS} --directory-prefix crypto-config/peerOrganizations/\$ORG.$DOMAIN/msp/tlscacerts http://www.\$ORG.$DOMAIN:$DEFAULT_WWW_PORT/crypto-config/peerOrganizations/\$ORG.$DOMAIN/msp/tlscacerts/tlsca.\$ORG.$DOMAIN-cert.pem; done"
