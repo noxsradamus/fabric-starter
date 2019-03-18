@@ -386,6 +386,14 @@ function generatePeerArtifacts() {
 
     echo "Generating crypto material with cryptogen"
 
+    # Note: this is needed to change the docker version tag in the base.yaml
+    # otherwise the docker-compose command will crash with error "... fabric-tools:FABRIC_VERSION"
+    # not found
+
+    file_base="$GENERATED_DOCKER_COMPOSE_FOLDER/base.yaml"
+    file_base_intercept="$GENERATED_DOCKER_COMPOSE_FOLDER/base-intercept.yaml"
+    setDockerVersions $file_base
+
     echo "docker-compose --file ${f} run --rm \"cliNoCryptoVolume.$org.$DOMAIN\" bash -c \"cryptogen generate --config=cryptogen-$org.yaml\""
     docker-compose --file ${f} run --rm "cliNoCryptoVolume.$org.$DOMAIN" bash -c "sleep 2 && cryptogen generate --config=cryptogen-$org.yaml"
 
